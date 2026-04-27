@@ -37,26 +37,26 @@
 
 ### 스택
 
-| 레이어         | 선택                                                            | 대안 검토 결과                                         |
-| -------------- | --------------------------------------------------------------- | ------------------------------------------------------ |
-| 언어           | **TypeScript 5.8+ strict**                                      | —                                                      |
-| 런타임         | **Node.js 22.22.x LTS** (정확히 핀)                             | 24는 ecosystem 미흡                                    |
-| 패키지 매니저  | **pnpm 9+**                                                     | Bun 1.3은 봇 ecosystem 미검증                          |
-| Discord SDK    | **discord.js v14.26+**                                          | Necord (NestJS 강제), Sapphire (위에 얹음)             |
-| Bot 프레임워크 | **Sapphire Framework v5.5+**                                    | raw discord.js는 boilerplate 폭증                      |
-| ORM            | **Prisma 7** (현재 7.8.0, Rust engine 제거 + driver adapter)    | Drizzle은 SQL-native지만 다중 테이블 DX 손해           |
-| DB             | **PostgreSQL 16+**                                              | per-guild config는 JSONB                               |
-| Cache/Queue    | **(옵셔널)** Redis 7 + BullMQ — Phase 4부터 도입                | v1~3까지는 Postgres + 인메모리로 충분 (아래 §6.1 참조) |
-| 빌드           | **tsup** (build) + **tsx** (dev watch)                          | esbuild 직접 호출은 너무 raw                           |
-| 모노레포       | **Turborepo + pnpm workspaces**                                 | Nx는 학습곡선 ↑                                        |
-| 린터           | **ESLint v9 flat config** (oxlint 점진 이행)                    | oxlint 지금 전면 도입은 룰 누락 위험                   |
-| 포맷터         | **Prettier 3**                                                  | oxfmt 정착되면 검토                                    |
-| 테스트         | **Vitest 4**                                                    | Jest는 ESM/속도 부담                                   |
-| Git hooks      | **lefthook**                                                    | husky 대체 (yaml + 빠름)                               |
-| Commits        | **Conventional Commits + commitlint**                           | —                                                      |
-| 릴리스         | **Changesets**                                                  | semantic-release는 단일 패키지 전용                    |
-| 배포           | **GCP Compute Engine VM + docker-compose** (멀티스테이지 build) | Cloud Run 부적합 (gateway WebSocket 영구 연결 필요)    |
-| 관측           | **pino + Sentry + HTTP healthcheck**                            | —                                                      |
+| 레이어         | 선택                                                            | 대안 검토 결과                                                                                        |
+| -------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 언어           | **TypeScript 5.8+ strict**                                      | —                                                                                                     |
+| 런타임         | **Node.js 22.22.x LTS** (정확히 핀)                             | 24는 ecosystem 미흡                                                                                   |
+| 패키지 매니저  | **pnpm 9+**                                                     | Bun 1.3은 봇 ecosystem 미검증                                                                         |
+| Discord SDK    | **discord.js v14.26+**                                          | Necord (NestJS 강제), Sapphire (위에 얹음)                                                            |
+| Bot 프레임워크 | **Sapphire Framework v5.5+**                                    | raw discord.js는 boilerplate 폭증                                                                     |
+| ORM            | **Prisma 7** (현재 7.8.0, prisma-client ESM generator)          | Drizzle은 SQL-native지만 다중 테이블 DX 손해 / 레거시 prisma-client-js는 CJS만 출력해서 Node ESM 불가 |
+| DB             | **PostgreSQL 16+**                                              | per-guild config는 JSONB                                                                              |
+| Cache/Queue    | **(옵셔널)** Redis 7 + BullMQ — Phase 4부터 도입                | v1~3까지는 Postgres + 인메모리로 충분 (아래 §6.1 참조)                                                |
+| 빌드           | **tsup** (build) + **tsx** (dev watch)                          | esbuild 직접 호출은 너무 raw                                                                          |
+| 모노레포       | **Turborepo + pnpm workspaces**                                 | Nx는 학습곡선 ↑                                                                                       |
+| 린터           | **ESLint v9 flat config** (oxlint 점진 이행)                    | oxlint 지금 전면 도입은 룰 누락 위험                                                                  |
+| 포맷터         | **Prettier 3**                                                  | oxfmt 정착되면 검토                                                                                   |
+| 테스트         | **Vitest 4**                                                    | Jest는 ESM/속도 부담                                                                                  |
+| Git hooks      | **lefthook**                                                    | husky 대체 (yaml + 빠름)                                                                              |
+| Commits        | **Conventional Commits + commitlint**                           | —                                                                                                     |
+| 릴리스         | **Changesets**                                                  | semantic-release는 단일 패키지 전용                                                                   |
+| 배포           | **GCP Compute Engine VM + docker-compose** (멀티스테이지 build) | Cloud Run 부적합 (gateway WebSocket 영구 연결 필요)                                                   |
+| 관측           | **pino + Sentry + HTTP healthcheck**                            | —                                                                                                     |
 
 ### 도메인 결정
 
@@ -66,6 +66,9 @@
 - **Permission model** — 2026-02-23 split 적용: `PIN_MESSAGES`, `BYPASS_SLOWMODE`, `CREATE_GUILD_EXPRESSIONS`가 별 권한. invite scope 계산 시 **반드시 신규 비트 포함**.
 - **Branding 주입 경로** — `apps/bot/src/config/branding.ts`가 env에서 읽어 typed `Branding` 객체 export. 이 객체만 봇 전체가 참조. env 키: `BOT_NAME`, `BOT_BRAND_COLOR` (hex), `BOT_ICON_URL`, `BOT_FOOTER_TEXT`, `BOT_SUPPORT_URL`, `BOT_LOCALE` (`en`/`ko` 등).
 - **Prisma 7 driver adapter 패턴** — Prisma 7부터 `datasource.url`이 `schema.prisma`에서 빠지고 `packages/database/prisma.config.ts`로 이동. runtime PrismaClient는 `@prisma/adapter-pg` (node-postgres 기반)를 통해 connection. `prisma generate`는 connect 안 하므로 dev 편의 placeholder URL을 npm script에 inline (`db:generate`, `build`). 진짜 migrate는 `DATABASE_URL` export 후 `db:migrate*` 실행.
+- **Prisma 7 prisma-client (ESM) generator** — schema.prisma의 `generator client { provider = "prisma-client" ... }` (no `-js` 접미사). 출력 위치 `packages/database/src/generated/client/` (gitignored). `runtime=nodejs`, `moduleFormat=esm`, `generatedFileExtension=ts`, `importFileExtension=js`. 레거시 `prisma-client-js`는 CJS spread (`module.exports = {...require('.prisma/client/default')}`)라 Node ESM의 cjs-module-lexer가 named export를 정적 분석 못 해서 `import { PrismaClient } from '@prisma/client'`가 런타임에 실패함 — 이게 새 generator를 쓰는 이유.
+- **Sapphire piece 디렉토리 규칙 (불변, 위반 시 silent fail)** — Sapphire의 `InteractionHandlerStore`는 `interaction-handlers/` (하이픈) 폴더만 스캔. `interactions/` 같은 변형은 무시됨. **`Listener` / `Command` / `InteractionHandler` / `Precondition` 모두 1 파일 = 1 클래스 export** (default export 아니어도 OK이지만 한 파일에 두 개 두면 두 번째는 등록 안 됨). `Precondition`의 `name` 옵션은 명시 설정 필수 — 안 하면 Sapphire가 filename basename으로 fallback해서 `preconditions: ['AdminOnly']` 같은 참조가 깨짐.
+- **ChatInputCommandDenied 이벤트 처리 필수** — Sapphire는 precondition이 `this.error(...)` 반환 시 `ChatInputCommandDenied` 이벤트를 emit하지만 자동 응답 안 함. listener 없으면 Discord가 3초 후 "application did not respond" 표시. `listeners/chatInputCommandDenied.ts`가 i18n 메시지 ephemeral relay.
 - **메시지 템플릿** — 모든 사용자-대면 카피는 `apps/bot/src/i18n/<locale>/<domain>.ts`에 키-값 형태. 변수 치환은 ICU MessageFormat 또는 단순 `{var}` 치환. 카피 변경 = 코드 수정 없이 i18n 파일만.
 
 ---
@@ -83,16 +86,17 @@ discord-bot/
 │   │   │   │   ├── leveling/      # rank, leaderboard
 │   │   │   │   ├── roles/         # selfrole, autorole 설정
 │   │   │   │   └── utility/       # ping, help, serverinfo
-│   │   │   ├── listeners/         # discord.js Client 이벤트
-│   │   │   ├── interactions/      # buttons/, selectMenus/, modals/ (customId 라우팅)
-│   │   │   ├── services/          # 비즈니스 로직 (TicketService, XpService)
+│   │   │   ├── listeners/         # discord.js Client 이벤트 — 1 file = 1 Listener class (Sapphire 1 piece per file)
+│   │   │   ├── interaction-handlers/  # buttons/, modals/ — Sapphire 하드코딩 폴더명 (interactions/ 아님)
+│   │   │   ├── services/          # 비즈니스 로직 (TicketService, XpService) — discord.js 객체 의존 0
+│   │   │   ├── services/ports/    # DiscordGateway interface + Djs 구현 (services 의 외부 I/O seam)
 │   │   │   ├── jobs/              # BullMQ workers (reminder, autoUnmute, autoClose)
-│   │   │   ├── preconditions/     # 권한 가드 (sapphire 패턴)
-│   │   │   ├── lib/               # 순수 유틸 (formatters, durationParser, logger)
+│   │   │   ├── preconditions/     # 권한 가드. name 옵션 명시 필수 (filename fallback 위험)
+│   │   │   ├── lib/               # 순수 유틸 (customId, advisoryLock, lockKeys, welcomeBuilder, panelBuilder, replyEphemeral 등)
 │   │   │   ├── config/            # zod env 스키마, branding (frozen)
 │   │   │   ├── i18n/              # locale별 카피 템플릿 (en/, ko/, ...)
 │   │   │   ├── healthcheck/       # /healthz HTTP 서버 (Docker readiness)
-│   │   │   ├── container.ts       # Sapphire DI container
+│   │   │   ├── container.ts       # Sapphire DI container + attachServices(gateway)
 │   │   │   └── index.ts           # bootstrap
 │   │   ├── tests/                 # 통합 테스트
 │   │   ├── Dockerfile
@@ -101,7 +105,12 @@ discord-bot/
 │   └── dashboard/                 # (장차) Next.js 웹 대시보드
 ├── packages/
 │   ├── database/                  # Prisma schema + 마이그레이션 + 클라이언트 export
-│   ├── shared/                    # 양 앱 공용 타입/zod 스키마/상수
+│   │   ├── prisma/                # schema.prisma + migrations/ + prisma.config.ts
+│   │   └── src/
+│   │       ├── client.ts          # PrismaClient + PrismaPg 어댑터 instantiation
+│   │       ├── index.ts           # 공개 surface (db, Prisma, model types, TicketStatus)
+│   │       └── generated/client/  # prisma-client (ESM) generator 출력 — gitignored
+│   ├── shared/                    # 양 앱 공용 타입/zod 스키마/상수 (Result, AppError 계층)
 │   ├── tsconfig/                  # base.json, bot.json, web.json
 │   └── eslint-config/             # 공유 ESLint flat config
 ├── docs/
@@ -361,38 +370,41 @@ infra/
 
 ## 8. 진행 상황
 
-**현재 상태 (2026-04-27 — Phase 0 ✅ 완료):**
+**현재 상태 (2026-04-27 — Phase 0 ✅, Phase 1 ✅ 완료):**
 
-- ✅ Git 레포 + GitHub remote (`GrapeInTheTree/discord-bot`, PUBLIC, 6 commits)
-- ✅ `gh` active account = `GrapeInTheTree`
-- ✅ CLAUDE.md + vault docs (overview/research × 3/implementation × 4/troubleshooting × 1)
-- ✅ 모노레포 스캐폴딩 (pnpm/Turborepo/Changesets/lefthook/commitlint/gitleaks/ESLint v9 flat/Prettier/Vitest)
-- ✅ `apps/bot` Sapphire v5 부트스트랩 + multi-entry tsup
-- ✅ `packages/{database,shared,tsconfig,eslint-config}`
-- ✅ `infra/docker-compose.yml` (단일, registry-less — VM이 Dockerfile로 직접 빌드)
-- ✅ CI: typecheck/lint/test/build/gitleaks/format/white-label-grep/Dockerfile-build
-- ✅ FanX 테스트 서버 (`Kayen Test Sever`)에서 **Fannie Test#2349**가 `/ping` 응답 (438ms)
+- ✅ **Phase 0**: 모노레포 스캐폴딩 + Sapphire bootstrap + multi-entry tsup + 전 quality gate. `Kayen Test Sever`에서 **Fannie Test#2349**가 `/ping` 응답. 함정 16건은 vault `03_troubleshooting/01-phase-0-gotchas.md`
+- ✅ **Phase 1**: 5 PR (PR-1~5, ~3000 LOC) 머지 + post-Phase-1 fix 7 commits. 티켓 lifecycle (open/claim/close/reopen/delete) FanX 테스트 서버에서 E2E 검증 완료. unit 82/82 + integration 5/5 (testcontainers pg 16) green. Coverage 90/83/93/90 ≥ 임계치
+- ✅ **Docker production-ready**: `docker compose -f infra/docker-compose.yml up -d --build bot`로 prisma migrate deploy + 봇 부팅 + healthy. `--ignore-scripts` (lefthook prepare 우회) + `--legacy` (pnpm 10 deploy) + `--chown=node:node` (prisma engines 캐시 권한) 패턴 정립
 
-**Phase 0 발견·해결한 함정 16건**: 자세히는 vault `03_troubleshooting/01-phase-0-gotchas.md`
+**Phase 1에서 가장 시간 들었던 함정 (vault `03_troubleshooting/02-phase-1-gotchas.md`):**
 
-**다음 할 일 — Phase 1 (Tickets MVP, D+0~7):**
+- `@prisma/client@7` default entry는 CJS — Node ESM의 cjs-module-lexer가 named export 정적 분석 못 함. **해법**: 새 `prisma-client` ESM generator로 전환 (CJS interop 우회 코드 0줄)
+- Sapphire `InteractionHandlerStore`는 `interaction-handlers/` (하이픈)만 스캔. `interactions/`로 짜놨더니 모든 button/modal 무응답 → **해법**: 디렉토리 rename
+- Sapphire piece 1 file = 1 class. 한 파일에 listener 두 개 export하면 두 번째는 silent fail → **해법**: `listeners/{interactionHandlerError, chatInputCommandError, chatInputCommandDenied}.ts` 분할
+- `Precondition.name` 옵션 명시 안 하면 filename basename으로 fallback. `adminOnly.ts` → `'adminOnly'`로 등록되는데 commands는 `['AdminOnly']` 참조 → 미스매치 → **해법**: 생성자에서 `name: 'AdminOnly'` 명시
+- Sapphire는 `ChatInputCommandDenied` 이벤트에 자동 응답 안 함. listener 없으면 Discord "application did not respond" 3초 후 → **해법**: `chatInputCommandDenied.ts` listener 추가
 
-1. 첫 prisma migration: `Bootstrap` placeholder → 실제 모델 (`GuildConfig`, `Panel`, `PanelTicketType`, `Ticket`, `TicketEvent`)
-2. intents에 `GatewayIntentBits.GuildMembers` 추가 (Privileged Intent Portal에 ON 됨)
-3. Sapphire `idHints` 설정 (매 부팅마다 슬래시 명령 재등록 방지)
-4. `services/{ticketService,panelService,guildConfigService}.ts` 구현 ([[02-phase-1-tickets-spec#3-파일별-책임-file-by-file]] 참조)
-5. `commands/tickets/{panel,ticket,setup}.ts` + `interactions/buttons/{panel-open,ticket-claim,ticket-close,ticket-reopen,ticket-delete}.ts` + `interactions/modals/ticket-delete-confirm.ts`
-6. `listeners/{channelDelete,interactionError}.ts`
-7. `lib/{customId,format,permissions,userEmojis,advisoryLock}.ts`
-8. i18n `tickets.ts` 카피 (이미 작성된 Fannie 카피 사용)
-9. Vitest unit + integration tests (§9 test matrix)
-10. PM과 권한 매트릭스 / 추가 ticket types 합의 → env/i18n에만 반영
-11. FanX 테스트 서버에서 §9 E2E 시나리오 전부 수동 검증
+**다음 할 일 — PR-6 (Multi-type panel):**
+
+PM 요구사항 (2026-04-27): 1 panel에 N type 버튼 지원. Contact Team 채널에 `Question (1:1 문의)` + `Business Offer (비즈니스)` 두 버튼, 각자 별도 active 카테고리(`community questions`, `business offers`)로 라우팅.
+
+Schema 차원에선 이미 1:N 지원 (`Panel` 1:N `PanelTicketType`). `/panel` 슬래시 일반화 필요:
+
+1. `/panel create channel:<#> title:<text> description:<text>` — panel + embed만 (버튼 0개)
+2. `/panel ticket-type add panel:<id> name:<str> label:<str> emoji:<str> active-category:<#> support-roles:<csv> ping-roles:<csv> per-user-limit:<int> welcome-message:<text?>` — type 추가 (버튼 추가됨)
+3. `/panel ticket-type edit ...` — 운영자가 Discord에서 직접 수정 가능 (코드 변경 0)
+4. `/panel ticket-type remove panel:<id> name:<str>`
+5. `PanelType` union 제거 → generic `string` (white-label)
+6. `i18n.tickets.panel.embedTitle/Description` hardcoded 제거 → 운영자 입력 또는 default fallback
+7. 추가 type별 카피 — `PanelTicketType.welcomeMessage` 컬럼 이미 존재, 슬래시 옵션으로 받음
+
+세부: vault `02_implementation/06-pr6-multi-type-panel.md`
 
 **막힌 것 / 대기 중:**
 
-- 없음 — Phase 1 즉시 착수 가능
-- (장기) GCP 프로젝트 ID — 팀 프로젝트로 배포 예정, 개인 GCP는 임시 선택지로 검토 가능
+- 없음 — PR-6 즉시 착수 가능
+- (장기) GCP 프로젝트 ID — 팀 프로젝트로 배포 예정. 현재 로컬 + dev guild에서 검증
+- (PM) 최종 브랜딩 (BOT_NAME 등), production guild 셋업, role 매트릭스 final — vault `02_implementation/06-pr6-multi-type-panel.md` 참조
 
 ---
 
