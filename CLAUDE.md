@@ -356,34 +356,38 @@ infra/
 
 ## 8. 진행 상황
 
-**현재 상태 (2026-04-27):**
+**현재 상태 (2026-04-27 — Phase 0 ✅ 완료):**
 
-- ✅ Git 레포 초기화 완료 (`/Users/ahn_euijin/discord-bot`)
-- ✅ GitHub remote 연결됨: `git@github.com:GrapeInTheTree/discord-bot.git` (**PUBLIC**, 커밋 0개)
-- ✅ `gh` active account = `GrapeInTheTree` (전환 완료)
-- ✅ CLAUDE.md 작성 (이 문서)
+- ✅ Git 레포 + GitHub remote (`GrapeInTheTree/discord-bot`, PUBLIC, 6 commits)
+- ✅ `gh` active account = `GrapeInTheTree`
+- ✅ CLAUDE.md + vault docs (overview/research × 3/implementation × 4/troubleshooting × 1)
+- ✅ 모노레포 스캐폴딩 (pnpm/Turborepo/Changesets/lefthook/commitlint/gitleaks/ESLint v9 flat/Prettier/Vitest)
+- ✅ `apps/bot` Sapphire v5 부트스트랩 + multi-entry tsup
+- ✅ `packages/{database,shared,tsconfig,eslint-config}`
+- ✅ `infra/docker-compose.yml` (단일, registry-less — VM이 Dockerfile로 직접 빌드)
+- ✅ CI: typecheck/lint/test/build/gitleaks/format/white-label-grep/Dockerfile-build
+- ✅ FanX 테스트 서버 (`Kayen Test Sever`)에서 **Fannie Test#2349**가 `/ping` 응답 (438ms)
 
-**다음 할 일 (즉시):**
+**Phase 0 발견·해결한 함정 16건**: 자세히는 vault `03_troubleshooting/01-phase-0-gotchas.md`
 
-1. Phase 0 — 모노레포 스캐폴딩
-   - `.gitignore` 먼저 (env/secret 패턴 포함) — **첫 커밋 전에**
-   - `pnpm-workspace.yaml`, `turbo.json`, root `package.json`, `tsconfig.json`
-   - `apps/bot` 패키지 + Sapphire 부트스트랩
-   - `packages/database` (Prisma init, 빈 schema)
-   - `packages/tsconfig`, `packages/eslint-config`
-   - lefthook + commitlint + Changesets + **gitleaks** 셋업
-   - `infra/docker-compose.yml` (bot + postgres, redis는 주석 처리)
-   - 첫 커밋 + push to `main`
-2. Discord Developer Portal 앱 등록 (Daniel 작업) → token을 `apps/bot/.env.local`로 (커밋 X)
-3. 개발 길드에 봇 invite (필요 권한: Manage Channels, Manage Roles, Send Messages, Read Message History, Embed Links, Use Slash Commands, Manage Webhooks, Moderate Members, Manage Messages)
-4. `/ping` 슬래시 커맨드 → 첫 로컬 실행 확인
-5. Phase 1 (Tickets) 착수
-6. **(나중에 — Daniel이 알려줌)** GCP 프로젝트(팀 소유) 정해지면 VM 프로비저닝 + 첫 실전 배포
+**다음 할 일 — Phase 1 (Tickets MVP, D+0~7):**
+
+1. 첫 prisma migration: `Bootstrap` placeholder → 실제 모델 (`GuildConfig`, `Panel`, `PanelTicketType`, `Ticket`, `TicketEvent`)
+2. intents에 `GatewayIntentBits.GuildMembers` 추가 (Privileged Intent Portal에 ON 됨)
+3. Sapphire `idHints` 설정 (매 부팅마다 슬래시 명령 재등록 방지)
+4. `services/{ticketService,panelService,guildConfigService}.ts` 구현 ([[02-phase-1-tickets-spec#3-파일별-책임-file-by-file]] 참조)
+5. `commands/tickets/{panel,ticket,setup}.ts` + `interactions/buttons/{panel-open,ticket-claim,ticket-close,ticket-reopen,ticket-delete}.ts` + `interactions/modals/ticket-delete-confirm.ts`
+6. `listeners/{channelDelete,interactionError}.ts`
+7. `lib/{customId,format,permissions,userEmojis,advisoryLock}.ts`
+8. i18n `tickets.ts` 카피 (이미 작성된 Fannie 카피 사용)
+9. Vitest unit + integration tests (§9 test matrix)
+10. PM과 권한 매트릭스 / 추가 ticket types 합의 → env/i18n에만 반영
+11. FanX 테스트 서버에서 §9 E2E 시나리오 전부 수동 검증
 
 **막힌 것 / 대기 중:**
 
-- Discord app token 발급 (Daniel 수동) — Phase 0 완료 전 필요는 없음 (스캐폴딩만 먼저 가능)
-- GCP 프로젝트 ID / 서비스계정 — **나중에 Daniel이 줌**, 팀 프로젝트로 배포 예정. Phase 0~1 진행에는 영향 없음.
+- 없음 — Phase 1 즉시 착수 가능
+- (장기) GCP 프로젝트 ID — 팀 프로젝트로 배포 예정, 개인 GCP는 임시 선택지로 검토 가능
 
 ---
 
