@@ -14,6 +14,14 @@ import { i18n } from '../i18n/index.js';
  * guard (we declare both on commands that need them).
  */
 export class AdminOnlyPrecondition extends Precondition {
+  public constructor(context: Precondition.LoaderContext, options: Precondition.Options) {
+    // Force the registered name to match what commands reference:
+    // `preconditions: ['AdminOnly']`. Otherwise Sapphire falls back to the
+    // file basename ("adminOnly") and the lookup fails at runtime with
+    // "The precondition 'AdminOnly' is not available."
+    super(context, { ...options, name: 'AdminOnly' });
+  }
+
   public override chatInputRun(interaction: ChatInputCommandInteraction): Precondition.Result {
     if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) === true) {
       return this.ok();
