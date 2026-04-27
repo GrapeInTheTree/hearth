@@ -15,15 +15,19 @@ export default defineConfig({
   minify: false,
   treeshake: false,
   splitting: false,
+  // Everything 3rd-party stays external so Node resolves it from
+  // node_modules at runtime. Workspace packages are also external —
+  // `pnpm deploy --prod --legacy` flattens them under node_modules/@discord-bot/*
+  // along with their transitive deps (Prisma, pg, …). Inlining workspace
+  // packages would force apps/bot to redeclare every transitive dep,
+  // eroding the package boundary documented in CLAUDE.md §3.
   external: [
-    '@prisma/client',
+    /^@discord-bot\//,
+    /^@prisma\//,
     'discord.js',
-    '@sapphire/framework',
-    '@sapphire/pieces',
-    '@sapphire/plugin-logger',
-    '@sapphire/utilities',
+    'pg',
+    'pg-native',
+    /^@sapphire\//,
     'zod',
   ],
-  // Workspace packages bundled (pnpm symlinks them locally; safe to inline).
-  noExternal: [/^@discord-bot\//],
 });

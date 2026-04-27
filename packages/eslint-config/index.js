@@ -20,6 +20,11 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.tsbuildinfo',
       '**/prisma/migrations/**',
+      // Prisma 7 prisma-client generator output. These TS files are
+      // regenerated on every `prisma generate` and follow the model
+      // PascalCase naming from schema.prisma — they're not source we
+      // maintain.
+      '**/src/generated/**',
       '**/.changeset/**',
     ],
   },
