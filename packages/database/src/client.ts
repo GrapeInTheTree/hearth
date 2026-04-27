@@ -1,5 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+
+import { PrismaClient } from './generated/client/client.js';
 
 // Prisma 7 requires an explicit driver adapter. The DATABASE_URL is read
 // from the host process — apps/bot validates and injects it via zod env

@@ -7,8 +7,19 @@
 // - DateTime maps to Postgres `timestamptz` (UTC).
 // - Hard delete is the default; Ticket is the only soft-archive (status='closed').
 
+// Prisma 7's ESM-native client generator. The legacy `prisma-client-js`
+// generator emits CommonJS into node_modules/.prisma/client, which Node ESM
+// can't named-import from (cjs-module-lexer can't resolve `module.exports =
+// { ...spread }`). The new `prisma-client` generator emits TS source we
+// compile alongside our package, giving us first-class ESM imports + a
+// stable, in-repo location for the generated types.
 generator client {
-  provider = "prisma-client-js"
+  provider               = "prisma-client"
+  output                 = "../src/generated/client"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
 }
 
 datasource db {

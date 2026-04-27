@@ -1,0 +1,4 @@
+# Prisma 7 prisma-client generator output. The generated TS files are
+# emitted on every `prisma generate` and committed only inside container
+# builds — locally each developer regenerates from schema.prisma.
+src/generated/
