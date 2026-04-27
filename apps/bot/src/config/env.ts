@@ -2,30 +2,6 @@ import { z } from 'zod';
 
 import { SnowflakeSchema } from '../lib/snowflake.js';
 
-// Comma-separated snowflake list with empty-string-coercion. Because dotenv
-// reads "" as empty string (not undefined), we treat empty list explicitly.
-const SnowflakeCsvSchema = z
-  .string()
-  .default('')
-  .transform((raw, ctx) => {
-    if (raw === '') return [] as string[];
-    const ids = raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s !== '');
-    for (const id of ids) {
-      const parsed = SnowflakeSchema.safeParse(id);
-      if (!parsed.success) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Invalid snowflake "${id}" in CSV list`,
-        });
-        return z.NEVER;
-      }
-    }
-    return ids;
-  });
-
 const EnvSchema = z.object({
   // Discord — required
   DISCORD_TOKEN: z.string().min(50, 'Discord token looks invalid (too short)'),
@@ -47,16 +23,12 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   // Tickets — all optional so a fresh deploy can boot before /setup is run.
-  // Services validate presence at use-time and throw ValidationError pointing
-  // at the missing key, so the bot's failure mode is "command fails ephemerally"
-  // rather than "process crashes on boot".
-  TICKET_SUPPORT_PANEL_CHANNEL_ID: SnowflakeSchema.optional(),
-  TICKET_OFFER_PANEL_CHANNEL_ID: SnowflakeSchema.optional(),
-  TICKET_ACTIVE_CATEGORY_ID: SnowflakeSchema.optional(),
+  // Services validate presence at use-time and throw ValidationError when
+  // missing. Per-type config (panel channel, active category, support roles,
+  // ping roles, per-user limit) used to live here too — moved to slash-driven
+  // operator config (/panel + /panel ticket-type) so a new community can
+  // onboard without env changes.
   TICKET_ARCHIVE_CATEGORY_ID: SnowflakeSchema.optional(),
-  TICKET_SUPPORT_ROLE_IDS: SnowflakeCsvSchema,
-  TICKET_SUPPORT_MENTION_ROLE_IDS: SnowflakeCsvSchema,
-  TICKET_OFFER_MENTION_ROLE_IDS: SnowflakeCsvSchema,
   BOT_LOG_CHANNEL_ID: SnowflakeSchema.optional(),
 
   // Observability
@@ -75,23 +47,14 @@ export type Env = z.infer<typeof EnvSchema>;
  * so the bot never runs with a broken config.
  *
  * Empty-string values (`KEY=`) are treated as unset so that `.default()`
- * and `.optional()` modifiers work as expected with .env files. CSV-typed
- * keys preserve empty-string semantics inside SnowflakeCsvSchema (empty
- * → empty array) so an explicit `KEY=` doesn't produce `["",""]`.
+ * and `.optional()` modifiers work as expected with .env files.
  *
  * Critically: only key names are printed on failure — never values — to
  * avoid leaking partial secrets through CI/log forwarders.
  */
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  // CSV keys must keep empty-string sentinel so SnowflakeCsvSchema returns [].
-  // All other keys: empty string → undefined so optional()/default() kick in.
-  const csvKeys = new Set([
-    'TICKET_SUPPORT_ROLE_IDS',
-    'TICKET_SUPPORT_MENTION_ROLE_IDS',
-    'TICKET_OFFER_MENTION_ROLE_IDS',
-  ]);
   const cleaned: NodeJS.ProcessEnv = Object.fromEntries(
-    Object.entries(source).map(([k, v]) => [k, v === '' && !csvKeys.has(k) ? undefined : v]),
+    Object.entries(source).map(([k, v]) => [k, v === '' ? undefined : v]),
   );
   const parsed = EnvSchema.safeParse(cleaned);
 
