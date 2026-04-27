@@ -4,10 +4,13 @@ import { err, NotFoundError, ok, type Result } from '@discord-bot/shared';
 
 import type { Branding } from '../config/branding.js';
 import { format, i18n } from '../i18n/index.js';
+import { buildPanelComponents } from '../lib/panelBuilder.js';
 
 import type { DiscordGateway, PanelMessagePayload } from './ports/discordGateway.js';
 
 export type PanelType = 'support' | 'offer';
+
+const PLACEHOLDER_MESSAGE_ID = 'pending';
 
 export interface UpsertPanelInput {
   readonly guildId: string;
@@ -35,6 +38,11 @@ export interface UpsertPanelResult {
  * channel per type (Fannie pattern). Idempotent: re-running upsertPanel
  * with the same (guildId, channelId) edits the existing message instead
  * of creating duplicates.
+ *
+ * Order matters: we materialize Panel + PanelTicketType rows BEFORE sending
+ * the Discord message because the button's customId encodes both IDs. The
+ * tradeoff is that a Discord-side send failure leaves a Panel row with
+ * messageId='pending' which a retry of /panel create cleans up.
  */
 export class PanelService {
   public constructor(
@@ -46,56 +54,61 @@ export class PanelService {
   public async upsertPanel(
     input: UpsertPanelInput,
   ): Promise<Result<UpsertPanelResult, ValidationError>> {
-    const payload = this.buildPanelPayload(input);
     const existing = await this.db.panel.findFirst({
       where: { guildId: input.guildId, channelId: input.channelId },
       include: { ticketTypes: true },
     });
 
-    if (existing !== null) {
-      // Try to edit the live message first. If Discord 404s (message was
-      // deleted out-of-band), fall through to recreate.
-      try {
-        await this.gateway.editPanelMessage(existing.channelId, existing.messageId, payload);
-        const ticketType = await this.upsertTicketType(existing.id, input);
-        return ok({
-          panel: existing,
-          ticketType,
-          messageId: existing.messageId,
-          created: false,
-        });
-      } catch {
-        // Fall through to send + replace.
-      }
-    }
-
-    const { messageId } = await this.gateway.sendPanelMessage(input.channelId, payload);
+    // Materialize Panel + TicketType so we know the IDs the button needs.
     const panel =
       existing ??
       (await this.db.panel.create({
         data: {
           guildId: input.guildId,
           channelId: input.channelId,
-          messageId,
+          messageId: PLACEHOLDER_MESSAGE_ID,
           embedTitle: this.embedTitle(input.type),
           embedDescription: this.embedDescription(input),
         },
       }));
-
-    if (existing !== null) {
-      await this.db.panel.update({
-        where: { id: existing.id },
-        data: {
-          messageId,
-          embedTitle: this.embedTitle(input.type),
-          embedDescription: this.embedDescription(input),
-        },
-      });
-    }
-
     const ticketType = await this.upsertTicketType(panel.id, input);
 
-    return ok({ panel, ticketType, messageId, created: existing === null });
+    const payload = this.buildPanelPayload(input, panel.id, ticketType);
+
+    if (existing !== null && existing.messageId !== PLACEHOLDER_MESSAGE_ID) {
+      // Try to edit the live message first. If Discord 404s (message was
+      // deleted out-of-band), fall through to send a fresh one.
+      try {
+        await this.gateway.editPanelMessage(existing.channelId, existing.messageId, payload);
+        await this.db.panel.update({
+          where: { id: panel.id },
+          data: {
+            embedTitle: this.embedTitle(input.type),
+            embedDescription: this.embedDescription(input),
+          },
+        });
+        return ok({ panel, ticketType, messageId: existing.messageId, created: false });
+      } catch {
+        // Stale messageId — fall through to send + replace.
+      }
+    }
+
+    const { messageId } = await this.gateway.sendPanelMessage(input.channelId, payload);
+    const updated = await this.db.panel.update({
+      where: { id: panel.id },
+      data: {
+        messageId,
+        embedTitle: this.embedTitle(input.type),
+        embedDescription: this.embedDescription(input),
+      },
+    });
+
+    return ok({
+      panel: updated,
+      ticketType,
+      messageId,
+      created: existing === null,
+    });
   }
 
   public async getPanelTypeForOpen(
@@ -146,7 +159,11 @@ export class PanelService {
     return await this.db.panelTicketType.update({ where: { id: existingType.id }, data });
   }
 
-  private buildPanelPayload(input: UpsertPanelInput): PanelMessagePayload {
+  private buildPanelPayload(
+    input: UpsertPanelInput,
+    panelId: string,
+    ticketType: PanelTicketType,
+  ): PanelMessagePayload {
     return {
       content: undefined,
       embeds: [
@@ -156,9 +173,12 @@ export class PanelService {
           color: this.branding.color,
         },
       ],
-      // Components are wired in PR-3 (admin command sends with the actual button);
-      // this service only persists Panel + TicketType + the embed body.
-      components: [],
+      components: buildPanelComponents({
+        panelId,
+        typeId: ticketType.id,
+        emoji: ticketType.emoji,
+        label: ticketType.buttonLabel ?? 'Open ticket',
+      }),
     };
   }
 
