@@ -1,5 +1,6 @@
 import '@sapphire/plugin-logger/register';
 
+import { container as diContainer } from '@sapphire/framework';
 import {
   ApplicationCommandRegistries,
   RegisterBehavior,
@@ -33,13 +34,28 @@ const client = new SapphireClient({
   logger: { level: sapphireLogLevel },
 });
 
-// Graceful shutdown on SIGTERM/SIGINT (Docker stop sends SIGTERM)
+// Graceful shutdown on SIGTERM/SIGINT (Docker stop sends SIGTERM).
+// Order: stop accepting Discord events → flush DB connections → exit. We swallow
+// shutdown errors since the process is exiting anyway, but log them for postmortem.
+let shuttingDown = false;
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.on(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     client.logger.warn(`Received ${signal} — shutting down gracefully`);
-    void client.destroy().finally(() => {
+    void (async () => {
+      try {
+        await client.destroy();
+      } catch (err) {
+        client.logger.error('Error while destroying Discord client', err);
+      }
+      try {
+        await diContainer.db.$disconnect();
+      } catch (err) {
+        client.logger.error('Error while disconnecting Prisma client', err);
+      }
       process.exit(0);
-    });
+    })();
   });
 }
 
