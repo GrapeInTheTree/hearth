@@ -1,7 +1,11 @@
-// Discord bot database schema.
-// Phase 0: placeholder model only — Phase 1 replaces with real schema
-// (GuildConfig, Panel, PanelTicketType, Ticket, TicketEvent).
-// See vault doc: 02_implementation/03-data-models.md
+// Discord bot database schema — Phase 1 (Tickets MVP).
+//
+// Conventions (see vault 02_implementation/03-data-models.md):
+// - All Discord IDs (guildId, channelId, userId, roleId, messageId) stored as String —
+//   snowflakes exceed JS Number safe range and BigInt would lose precision in JSON edges.
+// - cuid() for our own primary keys; never collides with snowflakes.
+// - DateTime maps to Postgres `timestamptz` (UTC).
+// - Hard delete is the default; Ticket is the only soft-archive (status='closed').
 
 generator client {
   provider = "prisma-client-js"
@@ -13,8 +17,107 @@ datasource db {
   // Runtime client uses @prisma/adapter-pg — see src/client.ts.
 }
 
-/// Placeholder so `prisma generate` succeeds in Phase 0.
-/// Removed by Phase 1's `0001_init_tickets` migration.
-model Bootstrap {
-  id String @id @default(cuid())
+// ─────────────────────────────────────────────────────────────────
+// Tickets domain
+// ─────────────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  open
+  claimed
+  closed
+}
+
+/// Per-guild bot configuration. One row per Discord guild the bot serves.
+model GuildConfig {
+  guildId           String   @id
+  archiveCategoryId String?
+  alertChannelId    String?
+  ticketCounter     Int      @default(0)
+  defaultLocale     String   @default("en")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// A panel message (embed + button) posted to a public channel. Users click the button
+/// to open a ticket. One panel pins to one channel; cross-references resolved at send time.
+model Panel {
+  id               String            @id @default(cuid())
+  guildId          String
+  channelId        String
+  messageId        String
+  embedTitle       String
+  embedDescription String
+  embedColor       String?
+  ticketTypes      PanelTicketType[]
+  tickets          Ticket[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([guildId, channelId, messageId])
+  @@index([guildId])
+}
+
+/// One ticket type per panel (e.g. 'support', 'offer'). Carries category placement,
+/// which roles count as staff, ping targets, per-user concurrency limit, and
+/// optional welcome-message override (falls back to i18n.tickets.welcome.default).
+model PanelTicketType {
+  id               String   @id @default(cuid())
+  panelId          String
+  panel            Panel    @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  name             String
+  emoji            String
+  buttonStyle      String // 'primary' | 'secondary' | 'success' | 'danger'
+  buttonLabel      String?
+  buttonOrder      Int      @default(0)
+  activeCategoryId String
+  supportRoleIds   String[]
+  pingRoleIds      String[]
+  perUserLimit     Int? // null = unlimited; '1' = at most one open per (user,type)
+  welcomeMessage   String?  @db.Text
+  tickets          Ticket[]
+
+  @@index([panelId])
+}
+
+/// A live or archived ticket. status drives button enable/disable + channel category.
+/// `welcomeMessageId` is the pinned message we edit on every state change.
+/// Race condition guard: see migration's partial unique index `ticket_open_dedupe`.
+model Ticket {
+  id               String          @id @default(cuid())
+  guildId          String
+  panelId          String
+  panel            Panel           @relation(fields: [panelId], references: [id])
+  panelTypeId      String
+  panelType        PanelTicketType @relation(fields: [panelTypeId], references: [id])
+  channelId        String          @unique
+  welcomeMessageId String?
+  number           Int
+  openerId         String
+  claimedById      String?
+  status           TicketStatus    @default(open)
+  openedAt         DateTime        @default(now())
+  claimedAt        DateTime?
+  closedAt         DateTime?
+  closedById       String?
+  closeReason      String?
+  events           TicketEvent[]
+
+  @@unique([guildId, number])
+  @@index([guildId, status])
+  @@index([openerId, status])
+}
+
+/// Append-only audit trail: every state transition (opened/claimed/closed/reopened/deleted)
+/// + arbitrary metadata. Cascade-deletes with the parent Ticket (Delete writes a final
+/// `deleted` event before the cascade so modlog metadata captures the snapshot).
+model TicketEvent {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type      String // 'opened' | 'claimed' | 'closed' | 'reopened' | 'deleted' | 'channel-deleted-externally'
+  actorId   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
 }
