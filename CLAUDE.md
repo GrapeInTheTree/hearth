@@ -60,6 +60,7 @@
 | 배포           | **GCP Compute Engine VM + docker-compose** (멀티스테이지 build)                | Cloud Run 부적합 (gateway WebSocket 영구 연결 필요)                                                   |
 | 관측           | **pino + Sentry + HTTP healthcheck**                                           | —                                                                                                     |
 | 웹 대시보드    | **Next.js 15 + Tailwind v4 + shadcn/ui + Auth.js v5**                          | Vercel + Neon은 self-host 정신 위배 — 같은 VM에 nginx 뒤로 배포 (Path C)                              |
+| Dashboard 폼   | **react-hook-form 7 + @hookform/resolvers/zod**                                | useState chain은 검증 분산 + Server Action round-trip → 사용자 피드백 지연                            |
 | 도메인 패키지  | **`@hearth/tickets-core`** (티켓 도메인 services + ports + i18n + zod schemas) | 봇/대시보드 양쪽이 import. discord-api-types만 사용 (런타임 의존 0)                                   |
 
 ### 도메인 결정
@@ -168,6 +169,7 @@ hearth/
 
 - 티켓 도메인 로직은 `packages/tickets-core/`에만. 봇 / 대시보드 모두 여기서 import — 단일 진실의 원천.
 - `packages/tickets-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
+- **Client component (`'use client'`)는 `@hearth/tickets-core` 배럴 대신 `@hearth/tickets-core/schemas` subpath만 import.** 배럴은 services를 통해 `@hearth/database` → `pg` → `node:dns/net/tls`까지 끌고 와서 webpack이 client bundle에 못 넣음. schema 모듈만 별도 entry로 노출됨. 서버측 (Server Actions / RSC) 코드는 배럴 그대로 OK.
 - 대시보드 Server Action은 `tickets-core` 서비스 호출 + DB write만. **Discord 측 render는 항상 `botClient`로 봇의 `/internal/*` HTTP API 경유** — 대시보드는 Discord 토큰 보유 0.
 - `apps/dashboard/src/`에서 `discord.js` import 금지. 채널/카테고리/role 목록 같은 Discord 리소스도 `botClient.callBot('/internal/guilds/:id/resources')`로.
 - `apps/bot/src/services/ports/discordGateway.djs.ts`만 discord.js 직접 사용. djs implementation은 봇 컨테이너에만 존재.
@@ -441,6 +443,7 @@ infra/
   - PR-5: ticket types CRUD — chip-style RoleMultiPicker, 9-필드 form, removal blocked by tickets (slash와 동일 conflict copy)
   - PR-6: tickets read-only + settings (archive category, log channel)
   - PR-7: dashboard Dockerfile + compose 갱신 (image rename `hearth-bot:local` + `hearth-dashboard:local`, env-driven 호스트 포트), nginx 예시, deploy.sh `INTERNAL_API_TOKEN` 일치 검증, runbook
+- ✅ **로컬 docker 검증** (2026-04-28): 시크릿 창 OAuth → guild picker → panel/type/settings CRUD. 두 함정 처리 — Auth.js의 `useSecureCookies`가 NODE_ENV=production + http에서 `__Secure-` 쿠키 prefix 박아 PKCE 깨짐 → URL scheme 기반으로 분기 (`fix(core): scope Auth.js secure cookies to https NEXTAUTH_URL`). 폼 검증이 서버에 가서야 실패하는 UX → react-hook-form + zodResolver로 client-side onChange 검증 + inline 에러 카피, schemas는 `@hearth/tickets-core/schemas` subpath로 import (배럴은 pg/dns/net 끌고 와서 webpack 폭발)
 - ✅ **테스트 누계**: bot 28 unit + tickets-core 94 unit + dashboard 40 unit + bot 5 integration. 전부 green
 - 🚧 **PM Support Test 서버 검증**: 봇 lifecycle (PR-6 시점) 검증 완료. 대시보드 검증은 VM 배포 후
 
