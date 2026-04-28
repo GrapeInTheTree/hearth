@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Topbar } from '@/components/layout/topbar';
 import { DeletePanelButton } from '@/components/panels/delete-panel-button';
 import { PanelPreview } from '@/components/panels/panel-preview';
+import { RemoveTypeButton } from '@/components/panels/remove-type-button';
 import { RetrySyncButton } from '@/components/panels/retry-sync-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,14 +79,14 @@ export default async function PanelDetailPage({
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ticket types</CardTitle>
-            <CardDescription>
-              Each type renders one button on the panel. Type CRUD lands in the next release — for
-              now use the slash command{' '}
-              <code className="font-mono text-xs">/panel ticket-type add panel:{panelId}</code> to
-              add types.
-            </CardDescription>
+          <CardHeader className="flex-row items-center justify-between">
+            <div className="flex flex-col gap-1.5">
+              <CardTitle className="text-base">Ticket types</CardTitle>
+              <CardDescription>Each type renders one button on the panel.</CardDescription>
+            </div>
+            <Button asChild size="sm">
+              <Link href={`/g/${guildId}/panels/${panelId}/types/new`}>Add type</Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {panel.ticketTypes.length === 0 ? (
@@ -102,14 +103,19 @@ export default async function PanelDetailPage({
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{t.buttonLabel ?? t.name}</span>
                         <span className="font-mono text-xs text-[color:var(--color-fg-muted)]">
-                          {t.name}
+                          {t.name} · {t.supportRoleIds.length} support role
+                          {t.supportRoleIds.length === 1 ? '' : 's'}
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs text-[color:var(--color-fg-muted)]">
-                      {t.supportRoleIds.length} support role
-                      {t.supportRoleIds.length === 1 ? '' : 's'}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/g/${guildId}/panels/${panelId}/types/${t.id}/edit`}>
+                          Edit
+                        </Link>
+                      </Button>
+                      <RemoveTypeButton guildId={guildId} typeId={t.id} typeName={t.name} />
+                    </div>
                   </li>
                 ))}
               </ul>
