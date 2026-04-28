@@ -1,4 +1,4 @@
-import { PermissionError } from '@discord-bot/shared';
+import { PermissionError } from '@hearth/shared';
 import { describe, expect, it } from 'vitest';
 
 import {

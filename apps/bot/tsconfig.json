@@ -1,5 +1,5 @@
 {
-  "extends": "@discord-bot/tsconfig/bot",
+  "extends": "@hearth/tsconfig/bot",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

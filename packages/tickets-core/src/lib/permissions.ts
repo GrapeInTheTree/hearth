@@ -1,4 +1,4 @@
-import { PermissionError } from '@discord-bot/shared';
+import { PermissionError } from '@hearth/shared';
 
 // Discord ManageGuild permission bit (2^5 = 0x20). Stable Discord API constant —
 // see https://discord.com/developers/docs/topics/permissions. Inlined here so

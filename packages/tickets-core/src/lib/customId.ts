@@ -1,4 +1,4 @@
-import { ValidationError } from '@discord-bot/shared';
+import { ValidationError } from '@hearth/shared';
 import { z } from 'zod';
 
 // Discord's component customId hard limit is 100 chars. We reserve 4 for the

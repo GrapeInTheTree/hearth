@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import {
   ConflictError,
   type DiscordApiError,
@@ -12,8 +12,8 @@ import {
   err,
   isErr,
   ok,
-} from '@discord-bot/shared';
-import { type TicketTypeInput, TicketTypeInputSchema } from '@discord-bot/tickets-core';
+} from '@hearth/shared';
+import { type TicketTypeInput, TicketTypeInputSchema } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
 
 import { callBot } from '@/lib/botClient';

@@ -1,4 +1,4 @@
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 

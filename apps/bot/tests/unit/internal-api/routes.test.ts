@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'node:http';
 
-import { DiscordApiError, NotFoundError, err, ok } from '@discord-bot/shared';
-import type { PanelService } from '@discord-bot/tickets-core';
+import { DiscordApiError, NotFoundError, err, ok } from '@hearth/shared';
+import type { PanelService } from '@hearth/tickets-core';
 import { ChannelType } from 'discord.js';
 import { describe, expect, it, vi } from 'vitest';
 

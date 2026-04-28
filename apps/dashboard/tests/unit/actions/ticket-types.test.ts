@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, ok } from '@discord-bot/shared';
+import { ConflictError, NotFoundError, ok } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { addTicketType, editTicketType, removeTicketType } from '@/actions/ticket-types';
@@ -18,7 +18,7 @@ const dbMock = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@discord-bot/database', () => ({
+vi.mock('@hearth/database', () => ({
   db: dbMock,
   TicketStatus: { open: 'open', claimed: 'claimed', closed: 'closed' },
   Prisma: {},

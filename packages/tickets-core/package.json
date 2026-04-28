@@ -1,5 +1,5 @@
 {
-  "name": "@discord-bot/tickets-core",
+  "name": "@hearth/tickets-core",
   "version": "0.0.0",
   "private": true,
   "description": "Tickets domain logic — services, ports, schemas. Imported by both apps/bot and apps/dashboard.",
@@ -27,14 +27,14 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo coverage"
   },
   "dependencies": {
-    "@discord-bot/database": "workspace:*",
-    "@discord-bot/shared": "workspace:*",
+    "@hearth/database": "workspace:*",
+    "@hearth/shared": "workspace:*",
     "discord-api-types": "0.38.47",
     "zod": "3.24.1"
   },
   "devDependencies": {
-    "@discord-bot/eslint-config": "workspace:*",
-    "@discord-bot/tsconfig": "workspace:*",
+    "@hearth/eslint-config": "workspace:*",
+    "@hearth/tsconfig": "workspace:*",
     "@types/node": "22.10.2",
     "@vitest/coverage-v8": "2.1.8",
     "eslint": "9.17.0",

@@ -1,5 +1,5 @@
 {
-  "name": "@discord-bot/dashboard",
+  "name": "@hearth/dashboard",
   "version": "0.0.0",
   "private": true,
   "description": "Web dashboard — Next.js + Discord OAuth + Server Actions.",
@@ -17,9 +17,9 @@
     "clean": "rm -rf .next .turbo *.tsbuildinfo coverage"
   },
   "dependencies": {
-    "@discord-bot/database": "workspace:*",
-    "@discord-bot/shared": "workspace:*",
-    "@discord-bot/tickets-core": "workspace:*",
+    "@hearth/database": "workspace:*",
+    "@hearth/shared": "workspace:*",
+    "@hearth/tickets-core": "workspace:*",
     "@radix-ui/react-dropdown-menu": "2.1.16",
     "@radix-ui/react-label": "2.1.8",
     "@radix-ui/react-popover": "1.1.15",
@@ -38,8 +38,8 @@
     "zod": "3.24.1"
   },
   "devDependencies": {
-    "@discord-bot/eslint-config": "workspace:*",
-    "@discord-bot/tsconfig": "workspace:*",
+    "@hearth/eslint-config": "workspace:*",
+    "@hearth/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "4.2.4",
     "@types/node": "22.10.2",
     "@types/react": "19.2.14",

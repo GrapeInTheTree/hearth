@@ -1,5 +1,5 @@
-import { ConflictError, NotFoundError, PermissionError } from '@discord-bot/shared';
-import { decode, matchesAction } from '@discord-bot/tickets-core';
+import { ConflictError, NotFoundError, PermissionError } from '@hearth/shared';
+import { decode, matchesAction } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { type ModalSubmitInteraction, MessageFlags } from 'discord.js';
 

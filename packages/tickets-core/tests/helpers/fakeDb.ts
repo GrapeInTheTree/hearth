@@ -1,4 +1,4 @@
-import { type DbClient, Prisma, TicketStatus } from '@discord-bot/database';
+import { type DbClient, Prisma, TicketStatus } from '@hearth/database';
 
 // In-memory Prisma-shaped fake. Implements only the methods our services
 // actually call. We deliberately don't recreate Prisma's full surface —

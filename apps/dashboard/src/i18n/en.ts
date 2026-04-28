@@ -1,5 +1,5 @@
 // Operator-facing dashboard copy. Tickets domain copy lives in
-// @discord-bot/tickets-core (shared with the bot's slash error responses);
+// @hearth/tickets-core (shared with the bot's slash error responses);
 // keep this bundle to UI chrome — buttons, labels, page titles, empty
 // states.
 

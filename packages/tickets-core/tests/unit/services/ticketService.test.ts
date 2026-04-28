@@ -1,10 +1,5 @@
-import { TicketStatus } from '@discord-bot/database';
-import {
-  ConflictError,
-  DiscordApiError,
-  NotFoundError,
-  PermissionError,
-} from '@discord-bot/shared';
+import { TicketStatus } from '@hearth/database';
+import { ConflictError, DiscordApiError, NotFoundError, PermissionError } from '@hearth/shared';
 import { describe, expect, it } from 'vitest';
 
 import { GuildConfigService } from '../../../src/guildConfigService.js';

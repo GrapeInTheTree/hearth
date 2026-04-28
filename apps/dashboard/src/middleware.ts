@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Edge-compatible middleware. Does NOT import lib/auth.ts — that pulls
-// the @discord-bot/database chain (Prisma's driver adapter uses node:path)
+// the @hearth/database chain (Prisma's driver adapter uses node:path)
 // which the Edge runtime can't bundle. Instead, we check for the presence
 // of the NextAuth session cookie as a coarse signal, and the (authenticated)
 // layout does the real session validation server-side.

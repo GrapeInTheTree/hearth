@@ -1,9 +1,4 @@
-import {
-  ConflictError,
-  NotFoundError,
-  PermissionError,
-  ValidationError,
-} from '@discord-bot/shared';
+import { ConflictError, NotFoundError, PermissionError, ValidationError } from '@hearth/shared';
 import type { Interaction } from 'discord.js';
 import { MessageFlags } from 'discord.js';
 

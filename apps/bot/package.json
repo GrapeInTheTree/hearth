@@ -1,5 +1,5 @@
 {
-  "name": "@discord-bot/bot",
+  "name": "@hearth/bot",
   "version": "0.0.0",
   "private": true,
   "description": "Discord bot runtime — the deployable.",
@@ -19,9 +19,9 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo coverage"
   },
   "dependencies": {
-    "@discord-bot/database": "workspace:*",
-    "@discord-bot/shared": "workspace:*",
-    "@discord-bot/tickets-core": "workspace:*",
+    "@hearth/database": "workspace:*",
+    "@hearth/shared": "workspace:*",
+    "@hearth/tickets-core": "workspace:*",
     "@sapphire/framework": "5.5.0",
     "@sapphire/pieces": "4.4.1",
     "@sapphire/plugin-logger": "4.0.2",
@@ -30,8 +30,8 @@
     "zod": "3.24.1"
   },
   "devDependencies": {
-    "@discord-bot/eslint-config": "workspace:*",
-    "@discord-bot/tsconfig": "workspace:*",
+    "@hearth/eslint-config": "workspace:*",
+    "@hearth/tsconfig": "workspace:*",
     "@prisma/adapter-pg": "7.8.0",
     "@testcontainers/postgresql": "11.14.0",
     "@types/node": "22.10.2",

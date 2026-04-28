@@ -5,7 +5,7 @@
 # Local dev (bot/dashboard run via pnpm; only postgres in docker):
 #   docker compose -f infra/docker-compose.yml up -d postgres
 #   pnpm dev                       # bot
-#   pnpm --filter @discord-bot/dashboard dev   # dashboard
+#   pnpm --filter @hearth/dashboard dev   # dashboard
 #
 # Production (VM):
 #   git pull
@@ -33,7 +33,7 @@
 
 services:
   bot:
-    image: discord-bot-bot:local
+    image: hearth-bot:local
     build:
       context: ..
       dockerfile: apps/bot/Dockerfile
@@ -57,7 +57,7 @@ services:
         max-file: "5"
 
   dashboard:
-    image: discord-bot-dashboard:local
+    image: hearth-dashboard:local
     build:
       context: ..
       dockerfile: apps/dashboard/Dockerfile
@@ -103,7 +103,7 @@ services:
 
   # redis is added in Phase 4 (Reminders/Giveaways/multi-shard)
   # redis:
-  #   image: discord-bot-cache:local  (placeholder — slot reserved)
+  #   image: hearth-cache:local  (placeholder — slot reserved)
   #   image: redis:7-alpine
   #   restart: unless-stopped
   #   command: ['redis-server', '--appendonly', 'yes']

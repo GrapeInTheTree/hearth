@@ -1,4 +1,4 @@
-import { SnowflakeSchema } from '@discord-bot/tickets-core';
+import { SnowflakeSchema } from '@hearth/tickets-core';
 import { z } from 'zod';
 
 // Server-side env. Imported only from server components, route handlers,

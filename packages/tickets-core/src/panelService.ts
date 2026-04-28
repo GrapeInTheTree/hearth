@@ -1,6 +1,6 @@
-import type { DbClient, Panel, PanelTicketType, Prisma } from '@discord-bot/database';
-import { ConflictError, err, NotFoundError, ok, type Result } from '@discord-bot/shared';
-import type { ValidationError } from '@discord-bot/shared';
+import type { DbClient, Panel, PanelTicketType, Prisma } from '@hearth/database';
+import { ConflictError, err, NotFoundError, ok, type Result } from '@hearth/shared';
+import type { ValidationError } from '@hearth/shared';
 
 import type { Branding } from './branding.js';
 import { tickets as i18nTickets } from './i18n/index.js';

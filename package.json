@@ -1,8 +1,8 @@
 {
-  "name": "discord-bot",
+  "name": "hearth",
   "version": "0.0.0",
   "private": true,
-  "description": "White-label Discord community bot — MEE6 / Ticket Tool class. One codebase, deploy per community via env.",
+  "description": "Hearth — a white-label Discord community ops platform. Bot + dashboard, one codebase, deployed per community.",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
@@ -32,7 +32,7 @@
     "@commitlint/cli": "19.6.0",
     "@commitlint/config-conventional": "19.6.0",
     "@commitlint/types": "19.5.0",
-    "@discord-bot/eslint-config": "workspace:*",
+    "@hearth/eslint-config": "workspace:*",
     "@types/node": "22.10.2",
     "eslint": "9.17.0",
     "lefthook": "1.10.10",

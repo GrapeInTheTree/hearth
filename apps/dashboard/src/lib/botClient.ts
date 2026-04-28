@@ -1,4 +1,4 @@
-import { DiscordApiError, NotFoundError, type Result, err, ok } from '@discord-bot/shared';
+import { DiscordApiError, NotFoundError, type Result, err, ok } from '@hearth/shared';
 
 import { env } from './env';
 

@@ -1,11 +1,11 @@
-import { tickets as enTickets, format } from '@discord-bot/tickets-core';
+import { tickets as enTickets, format } from '@hearth/tickets-core';
 
 import { branding } from '../config/branding.js';
 
 import { common as enCommon } from './en/common.js';
 
 // `tickets` is the canonical ticket-domain copy bundle, owned by
-// @discord-bot/tickets-core so the dashboard can read identical strings.
+// @hearth/tickets-core so the dashboard can read identical strings.
 // `common` is bot-specific (boot logs, generic command errors) and lives
 // here. Locale switching is a no-op today (single 'en' bundle shipped) —
 // the structure is preserved so adding a 'ko' bundle later is a translation

@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import {
   type DiscordApiError,
   type NotFoundError,
@@ -11,8 +11,8 @@ import {
   err,
   isErr,
   ok,
-} from '@discord-bot/shared';
-import { type PanelInput, PanelInputSchema, PanelService } from '@discord-bot/tickets-core';
+} from '@hearth/shared';
+import { type PanelInput, PanelInputSchema, PanelService } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
 
 import { branding } from '@/config/branding';

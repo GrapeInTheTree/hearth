@@ -32,17 +32,17 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 COPY . .
 
 # Build chain: generate Prisma client -> build packages -> build bot
-RUN pnpm --filter @discord-bot/database run db:generate && \
-    pnpm --filter @discord-bot/shared run build && \
-    pnpm --filter @discord-bot/database run build && \
-    pnpm --filter @discord-bot/tickets-core run build && \
-    pnpm --filter @discord-bot/bot run build
+RUN pnpm --filter @hearth/database run db:generate && \
+    pnpm --filter @hearth/shared run build && \
+    pnpm --filter @hearth/database run build && \
+    pnpm --filter @hearth/tickets-core run build && \
+    pnpm --filter @hearth/bot run build
 
 # Deploy bot with prod-only deps to /out. --legacy is required since
 # pnpm 10 made injected workspaces the default and our workspaces are
 # non-injected (the symlink-based default that the rest of the toolchain
 # assumes). --ignore-scripts again skips the root prepare hook.
-RUN pnpm --filter @discord-bot/bot deploy --prod --legacy --ignore-scripts /out
+RUN pnpm --filter @hearth/bot deploy --prod --legacy --ignore-scripts /out
 
 # ──────────────────────────────────────────────────────────────────
 # Stage 2: runtime

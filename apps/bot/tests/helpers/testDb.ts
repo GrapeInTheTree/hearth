@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-import { type DbClient, PrismaClient } from '@discord-bot/database';
+import { type DbClient, PrismaClient } from '@hearth/database';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 

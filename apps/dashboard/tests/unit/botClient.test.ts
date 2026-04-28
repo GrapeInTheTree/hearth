@@ -1,4 +1,4 @@
-import { DiscordApiError, NotFoundError } from '@discord-bot/shared';
+import { DiscordApiError, NotFoundError } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { _resetBotClientBreaker, callBot } from '@/lib/botClient';

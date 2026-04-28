@@ -1,11 +1,7 @@
-import { TicketStatus } from '@discord-bot/database';
-import { GuildConfigService } from '@discord-bot/tickets-core';
-import {
-  type AddTicketTypeInput,
-  PanelService,
-  type UpsertPanelInput,
-} from '@discord-bot/tickets-core';
-import { TicketService } from '@discord-bot/tickets-core';
+import { TicketStatus } from '@hearth/database';
+import { GuildConfigService } from '@hearth/tickets-core';
+import { type AddTicketTypeInput, PanelService, type UpsertPanelInput } from '@hearth/tickets-core';
+import { TicketService } from '@hearth/tickets-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { FakeDiscordGateway } from '../../../../packages/tickets-core/tests/helpers/fakeGateway.js';

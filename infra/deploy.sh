@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy discord-bot on a VM (or any host running Docker + docker compose).
+# Deploy Hearth (bot + dashboard) on a VM (or any host running Docker + docker compose).
 # Builds bot + dashboard images locally from their Dockerfiles — no
 # registry required.
 #

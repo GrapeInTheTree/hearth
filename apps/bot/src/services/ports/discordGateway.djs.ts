@@ -1,4 +1,4 @@
-import { DiscordApiError } from '@discord-bot/shared';
+import { DiscordApiError } from '@hearth/shared';
 import type {
   CreateTicketChannelInput,
   DiscordGateway,
@@ -6,7 +6,7 @@ import type {
   PanelMessagePayload,
   SendWelcomeMessageInput,
   WelcomeMessagePayload,
-} from '@discord-bot/tickets-core';
+} from '@hearth/tickets-core';
 import {
   type APIEmbed,
   type Client,

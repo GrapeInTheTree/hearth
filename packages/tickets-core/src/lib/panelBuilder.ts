@@ -1,4 +1,4 @@
-import type { PanelTicketType } from '@discord-bot/database';
+import type { PanelTicketType } from '@hearth/database';
 import {
   type APIActionRowComponent,
   type APIButtonComponentWithCustomId,
@@ -18,7 +18,7 @@ import { encode } from './customId.js';
 // an operator with 25+ types should split them across multiple panels.
 //
 // Output is plain JSON (discord-api-types shapes) so this module — and
-// transitively all of @discord-bot/tickets-core — never imports the
+// transitively all of @hearth/tickets-core — never imports the
 // discord.js runtime. The bot's djs gateway implementation passes the
 // JSON straight through to channel.send({ components }).
 

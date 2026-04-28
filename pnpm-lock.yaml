@@ -20,7 +20,7 @@ importers:
       '@commitlint/types':
         specifier: 19.5.0
         version: 19.5.0
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
       '@types/node':
@@ -44,13 +44,13 @@ importers:
 
   apps/bot:
     dependencies:
-      '@discord-bot/database':
+      '@hearth/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@discord-bot/shared':
+      '@hearth/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@discord-bot/tickets-core':
+      '@hearth/tickets-core':
         specifier: workspace:*
         version: link:../../packages/tickets-core
       '@sapphire/framework':
@@ -72,10 +72,10 @@ importers:
         specifier: 3.24.1
         version: 3.24.1
     devDependencies:
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@discord-bot/tsconfig':
+      '@hearth/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@prisma/adapter-pg':
@@ -108,13 +108,13 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@discord-bot/database':
+      '@hearth/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@discord-bot/shared':
+      '@hearth/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@discord-bot/tickets-core':
+      '@hearth/tickets-core':
         specifier: workspace:*
         version: link:../../packages/tickets-core
       '@radix-ui/react-dropdown-menu':
@@ -166,10 +166,10 @@ importers:
         specifier: 3.24.1
         version: 3.24.1
     devDependencies:
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@discord-bot/tsconfig':
+      '@hearth/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/postcss':
@@ -224,10 +224,10 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
     devDependencies:
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@discord-bot/tsconfig':
+      '@hearth/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -281,10 +281,10 @@ importers:
 
   packages/shared:
     devDependencies:
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@discord-bot/tsconfig':
+      '@hearth/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -308,10 +308,10 @@ importers:
 
   packages/tickets-core:
     dependencies:
-      '@discord-bot/database':
+      '@hearth/database':
         specifier: workspace:*
         version: link:../database
-      '@discord-bot/shared':
+      '@hearth/shared':
         specifier: workspace:*
         version: link:../shared
       discord-api-types:
@@ -321,10 +321,10 @@ importers:
         specifier: 3.24.1
         version: 3.24.1
     devDependencies:
-      '@discord-bot/eslint-config':
+      '@hearth/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@discord-bot/tsconfig':
+      '@hearth/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':

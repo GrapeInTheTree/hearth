@@ -30,7 +30,7 @@
 ## Docs sync
 
 - [ ] `CLAUDE.md` updated (if scope/decisions changed)
-- [ ] Vault docs updated (`02_projects/discord-bot/`)
+- [ ] Vault docs updated (`02_projects/hearth/`)
 - [ ] Project memory updated (if cross-session-relevant)
 
 ## Open questions / follow-ups

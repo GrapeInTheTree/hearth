@@ -1,4 +1,4 @@
-import { ValidationError } from '@discord-bot/shared';
+import { ValidationError } from '@hearth/shared';
 import { describe, expect, it } from 'vitest';
 
 import { decode, encode, matchesAction } from '../../../src/lib/customId.js';

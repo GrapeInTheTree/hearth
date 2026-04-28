@@ -1,5 +1,5 @@
 // Vitest setup for tickets-core. We don't read env in tickets-core itself,
-// but @discord-bot/database's client validates DATABASE_URL at import time
+// but @hearth/database's client validates DATABASE_URL at import time
 // (driver-adapter pattern). A stub is enough — the unit tests use FakeDb,
 // not the real Prisma client.
 
