@@ -170,6 +170,8 @@ hearth/
 - 티켓 도메인 로직은 `packages/tickets-core/`에만. 봇 / 대시보드 모두 여기서 import — 단일 진실의 원천.
 - `packages/tickets-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
 - **Client component (`'use client'`)는 `@hearth/tickets-core` 배럴 대신 `@hearth/tickets-core/schemas` subpath만 import.** 배럴은 services를 통해 `@hearth/database` → `pg` → `node:dns/net/tls`까지 끌고 와서 webpack이 client bundle에 못 넣음. schema 모듈만 별도 entry로 노출됨. 서버측 (Server Actions / RSC) 코드는 배럴 그대로 OK.
+- **Server Action `err(...)` 인자는 plain `ActionError { code, message }` 만.** AppError 클래스 인스턴스는 React Flight 직렬화에서 `$Z` placeholder + redacted 메시지로 전락 — 클라이언트가 우리 카피 못 봄. 봇 내부 로직은 AppError 그대로 (타입 이점). dashboard action 경계에서만 변환 (`@hearth/shared`의 `ActionError` / `toActionError`).
+- **Layout/middleware의 `redirect()`는 certain failure에서만.** Discord 같은 외부 호출 일시 실패에 redirect를 걸면 Next.js 15의 client router cache가 그 redirect-payload를 캐시해서 reload 전엔 안 풀림 → 무한 루프. transient 실패는 fail-open + last-known-good fallback (`fetchUserGuilds`의 stale cache 패턴 참조).
 - 대시보드 Server Action은 `tickets-core` 서비스 호출 + DB write만. **Discord 측 render는 항상 `botClient`로 봇의 `/internal/*` HTTP API 경유** — 대시보드는 Discord 토큰 보유 0.
 - `apps/dashboard/src/`에서 `discord.js` import 금지. 채널/카테고리/role 목록 같은 Discord 리소스도 `botClient.callBot('/internal/guilds/:id/resources')`로.
 - `apps/bot/src/services/ports/discordGateway.djs.ts`만 discord.js 직접 사용. djs implementation은 봇 컨테이너에만 존재.
@@ -443,7 +445,7 @@ infra/
   - PR-5: ticket types CRUD — chip-style RoleMultiPicker, 9-필드 form, removal blocked by tickets (slash와 동일 conflict copy)
   - PR-6: tickets read-only + settings (archive category, log channel)
   - PR-7: dashboard Dockerfile + compose 갱신 (image rename `hearth-bot:local` + `hearth-dashboard:local`, env-driven 호스트 포트), nginx 예시, deploy.sh `INTERNAL_API_TOKEN` 일치 검증, runbook
-- ✅ **로컬 docker 검증** (2026-04-28): 시크릿 창 OAuth → guild picker → panel/type/settings CRUD. 두 함정 처리 — Auth.js의 `useSecureCookies`가 NODE_ENV=production + http에서 `__Secure-` 쿠키 prefix 박아 PKCE 깨짐 → URL scheme 기반으로 분기 (`fix(core): scope Auth.js secure cookies to https NEXTAUTH_URL`). 폼 검증이 서버에 가서야 실패하는 UX → react-hook-form + zodResolver로 client-side onChange 검증 + inline 에러 카피, schemas는 `@hearth/tickets-core/schemas` subpath로 import (배럴은 pg/dns/net 끌고 와서 webpack 폭발)
+- ✅ **로컬 docker 검증** (2026-04-28): 시크릿 창 OAuth → guild picker → panel/type/settings CRUD. 네 함정 처리 — Auth.js의 `useSecureCookies`가 NODE_ENV=production + http에서 `__Secure-` 쿠키 prefix 박아 PKCE 깨짐 → URL scheme 기반으로 분기 (`fix(core): scope Auth.js secure cookies to https NEXTAUTH_URL`). 폼 검증이 서버에 가서야 실패하는 UX → react-hook-form + zodResolver로 client-side onChange 검증, schemas는 `@hearth/tickets-core/schemas` subpath로 import (배럴은 pg/dns/net 끌고 와서 webpack 폭발). Server Action이 ConflictError 같은 Error class 인스턴스를 Result에 담아 반환하면 React Flight가 `$Z` placeholder로 redact → 사용자에게 generic "render error" 표시. plain `ActionError { code, message }` 반환으로 전환 (`fix(core): return plain ActionError from Server Actions`). Discord 일시 실패에 fetchUserGuilds가 `[]` 반환 → layout이 `/select-guild`로 redirect → Next.js 15 router cache가 그 redirect 캐시 → reload 전엔 안 풀림. last-known-good 캐시로 폴백 (`fix(core): keep stale guild cache when Discord OAuth call fails`)
 - ✅ **테스트 누계**: bot 28 unit + tickets-core 94 unit + dashboard 40 unit + bot 5 integration. 전부 green
 - 🚧 **PM Support Test 서버 검증**: 봇 lifecycle (PR-6 시점) 검증 완료. 대시보드 검증은 VM 배포 후
 
