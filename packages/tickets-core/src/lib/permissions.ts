@@ -1,5 +1,9 @@
 import { PermissionError } from '@discord-bot/shared';
-import { PermissionFlagsBits } from 'discord.js';
+
+// Discord ManageGuild permission bit (2^5 = 0x20). Stable Discord API constant —
+// see https://discord.com/developers/docs/topics/permissions. Inlined here so
+// tickets-core stays free of any discord.js runtime dependency.
+const MANAGE_GUILD_BIT = 1n << 5n;
 
 /**
  * Check whether a permission bitfield grants the ManageGuild permission.
@@ -7,7 +11,7 @@ import { PermissionFlagsBits } from 'discord.js';
  * via `.bitfield` so this function stays free of discord.js types and is unit-testable.
  */
 export function hasManageGuild(bits: bigint): boolean {
-  return (bits & PermissionFlagsBits.ManageGuild) === PermissionFlagsBits.ManageGuild;
+  return (bits & MANAGE_GUILD_BIT) === MANAGE_GUILD_BIT;
 }
 
 /**

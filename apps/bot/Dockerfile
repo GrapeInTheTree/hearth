@@ -18,6 +18,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/bot/package.json ./apps/bot/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
+COPY packages/tickets-core/package.json ./packages/tickets-core/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 
@@ -34,6 +35,7 @@ COPY . .
 RUN pnpm --filter @discord-bot/database run db:generate && \
     pnpm --filter @discord-bot/shared run build && \
     pnpm --filter @discord-bot/database run build && \
+    pnpm --filter @discord-bot/tickets-core run build && \
     pnpm --filter @discord-bot/bot run build
 
 # Deploy bot with prod-only deps to /out. --legacy is required since

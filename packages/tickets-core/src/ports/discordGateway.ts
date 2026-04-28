@@ -1,17 +1,18 @@
-import type { APIEmbed } from 'discord.js';
+import type { APIEmbed } from 'discord-api-types/v10';
 
-import type { WelcomeMessagePayload } from '../../lib/welcomeBuilder.js';
+import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 
 // The DiscordGateway interface is the only seam through which services
-// touch Discord. Production wiring uses DjsDiscordGateway (sibling file)
+// touch Discord. Production wiring uses DjsDiscordGateway (in apps/bot)
 // which delegates to a SapphireClient. Tests inject a FakeDiscordGateway.
 //
 // Hard rule: services NEVER import from 'discord.js' directly. Anything
 // the service needs from Discord goes through this interface, with raw
-// IDs and plain data shapes only. Anything richer than `string` / `number`
-// / `bigint` / `readonly Record<...>` is suspicious and should be replaced
-// with primitives. This is what makes services unit-testable without
-// booting the framework.
+// IDs and plain JSON shapes (discord-api-types) only. Anything richer
+// than `string` / `number` / `bigint` / `readonly Record<...>` is
+// suspicious. This is what makes services unit-testable without booting
+// the framework, and what lets @discord-bot/tickets-core stay free of
+// the discord.js runtime so it can be imported by the dashboard.
 
 export interface PanelMessagePayload {
   readonly content: string | undefined;

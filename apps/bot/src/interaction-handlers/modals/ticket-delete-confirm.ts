@@ -1,9 +1,9 @@
 import { ConflictError, NotFoundError, PermissionError } from '@discord-bot/shared';
+import { decode, matchesAction } from '@discord-bot/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { type ModalSubmitInteraction, MessageFlags } from 'discord.js';
 
 import { i18n } from '../../i18n/index.js';
-import { decode, matchesAction } from '../../lib/customId.js';
 import { readMemberPermissionsBits } from '../../lib/interactionHelpers.js';
 import { DELETE_CONFIRM_INPUT_ID, DELETE_CONFIRM_TOKEN } from '../buttons/ticket-delete.js';
 

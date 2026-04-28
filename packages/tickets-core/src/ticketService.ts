@@ -12,15 +12,14 @@ import {
   ValidationError,
 } from '@discord-bot/shared';
 
-import type { Branding } from '../config/branding.js';
-import { format, i18n } from '../i18n/index.js';
-import { withAdvisoryLock } from '../lib/advisoryLock.js';
-import { formatChannelName } from '../lib/format.js';
-import { ticketOpenLockKey } from '../lib/lockKeys.js';
-import { hasManageGuild, isSupportStaff } from '../lib/permissions.js';
-import { buildWelcomeMessage } from '../lib/welcomeBuilder.js';
-
+import type { Branding } from './branding.js';
 import type { GuildConfigService } from './guildConfigService.js';
+import { format, tickets as i18nTickets } from './i18n/index.js';
+import { withAdvisoryLock } from './lib/advisoryLock.js';
+import { formatChannelName } from './lib/format.js';
+import { ticketOpenLockKey } from './lib/lockKeys.js';
+import { hasManageGuild, isSupportStaff } from './lib/permissions.js';
+import { buildWelcomeMessage } from './lib/welcomeBuilder.js';
 import type { PanelService } from './panelService.js';
 import type { DiscordGateway, ModlogEmbed } from './ports/discordGateway.js';
 
@@ -87,7 +86,7 @@ export class TicketService {
       throw e;
     }
     if (childCount >= CATEGORY_CHILD_SOFT_CAP) {
-      return err(new ConflictError(i18n.tickets.errors.categoryFull));
+      return err(new ConflictError(i18nTickets.errors.categoryFull));
     }
 
     const lockKey = ticketOpenLockKey(input.guildId, input.openerId, type.id);
@@ -110,7 +109,7 @@ export class TicketService {
             },
           });
           if (existing !== null) {
-            throw new ConflictError(i18n.tickets.errors.alreadyOpen);
+            throw new ConflictError(i18nTickets.errors.alreadyOpen);
           }
 
           const number = await this.guildConfig.incrementTicketCounter(tx, input.guildId);
@@ -156,7 +155,7 @@ export class TicketService {
           .catch(() => undefined);
       }
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        return err(new ConflictError(i18n.tickets.errors.alreadyOpen, e));
+        return err(new ConflictError(i18nTickets.errors.alreadyOpen, e));
       }
       if (
         e instanceof ConflictError ||
@@ -170,11 +169,14 @@ export class TicketService {
     }
 
     // Send welcome message OUTSIDE the lock — Discord call is slow.
-    const welcomePayload = buildWelcomeMessage({
-      state: 'open',
-      ticketId: ticket.id,
-      ...(type.welcomeMessage !== null ? { bodyOverride: type.welcomeMessage } : {}),
-    });
+    const welcomePayload = buildWelcomeMessage(
+      {
+        state: 'open',
+        ticketId: ticket.id,
+        ...(type.welcomeMessage !== null ? { bodyOverride: type.welcomeMessage } : {}),
+      },
+      this.branding,
+    );
     try {
       const { messageId } = await this.gateway.sendWelcomeMessage({
         channelId: ticket.channelId,
@@ -206,10 +208,10 @@ export class TicketService {
     }
 
     if (!isSupportStaff(input.actorRoleIds, await this.supportRoleIds(ticket.panelTypeId))) {
-      return err(new PermissionError(i18n.tickets.errors.notSupportStaff));
+      return err(new PermissionError(i18nTickets.errors.notSupportStaff));
     }
     if (ticket.status !== TicketStatus.open) {
-      return err(new ConflictError(i18n.tickets.errors.alreadyClaimed));
+      return err(new ConflictError(i18nTickets.errors.alreadyClaimed));
     }
 
     // Optimistic: only update if status is still 'open'. 0 rows → racer won.
@@ -218,7 +220,7 @@ export class TicketService {
       data: { status: TicketStatus.claimed, claimedById: input.actorId, claimedAt: new Date() },
     });
     if (result.count === 0) {
-      return err(new ConflictError(i18n.tickets.errors.alreadyClaimed));
+      return err(new ConflictError(i18nTickets.errors.alreadyClaimed));
     }
     await this.db.ticketEvent.create({
       data: { ticketId: input.ticketId, type: 'claimed', actorId: input.actorId },
@@ -228,7 +230,7 @@ export class TicketService {
     await this.applyButtonStateChange(refreshed, 'claimed');
     await this.postSystemMessage(
       refreshed.channelId,
-      format(i18n.tickets.claimMessage, { actor_mention: `<@${input.actorId}>` }),
+      format(i18nTickets.claimMessage, { actor_mention: `<@${input.actorId}>` }),
     );
     return ok(refreshed);
   }
@@ -246,10 +248,10 @@ export class TicketService {
       !isOpener &&
       !isSupportStaff(input.actorRoleIds, await this.supportRoleIds(ticket.panelTypeId))
     ) {
-      return err(new PermissionError(i18n.tickets.errors.notSupportStaff));
+      return err(new PermissionError(i18nTickets.errors.notSupportStaff));
     }
     if (ticket.status === TicketStatus.closed) {
-      return err(new ConflictError(i18n.tickets.errors.alreadyClosed));
+      return err(new ConflictError(i18nTickets.errors.alreadyClosed));
     }
 
     const result = await this.db.ticket.updateMany({
@@ -257,7 +259,7 @@ export class TicketService {
       data: { status: TicketStatus.closed, closedById: input.actorId, closedAt: new Date() },
     });
     if (result.count === 0) {
-      return err(new ConflictError(i18n.tickets.errors.alreadyClosed));
+      return err(new ConflictError(i18nTickets.errors.alreadyClosed));
     }
     await this.db.ticketEvent.create({
       data: { ticketId: input.ticketId, type: 'closed', actorId: input.actorId },
@@ -283,7 +285,7 @@ export class TicketService {
     await this.applyButtonStateChange(refreshed, 'closed');
     await this.postSystemMessage(
       refreshed.channelId,
-      format(i18n.tickets.closeMessage, {
+      format(i18nTickets.closeMessage, {
         closer_mention: `<@${input.actorId}>`,
         closer_emojis: '',
       }),
@@ -299,10 +301,10 @@ export class TicketService {
       return err(new NotFoundError(`Ticket ${input.ticketId} not found`));
     }
     if (!isSupportStaff(input.actorRoleIds, await this.supportRoleIds(ticket.panelTypeId))) {
-      return err(new PermissionError(i18n.tickets.errors.notSupportStaff));
+      return err(new PermissionError(i18nTickets.errors.notSupportStaff));
     }
     if (ticket.status !== TicketStatus.closed) {
-      return err(new ConflictError(i18n.tickets.errors.notClosed));
+      return err(new ConflictError(i18nTickets.errors.notClosed));
     }
 
     const targetStatus = ticket.claimedById !== null ? TicketStatus.claimed : TicketStatus.open;
@@ -311,7 +313,7 @@ export class TicketService {
       data: { status: targetStatus, closedAt: null, closedById: null },
     });
     if (result.count === 0) {
-      return err(new ConflictError(i18n.tickets.errors.notClosed));
+      return err(new ConflictError(i18nTickets.errors.notClosed));
     }
     await this.db.ticketEvent.create({
       data: { ticketId: input.ticketId, type: 'reopened', actorId: input.actorId },
@@ -340,7 +342,7 @@ export class TicketService {
     );
     await this.postSystemMessage(
       refreshed.channelId,
-      format(i18n.tickets.reopenMessage, { actor_mention: `<@${input.actorId}>` }),
+      format(i18nTickets.reopenMessage, { actor_mention: `<@${input.actorId}>` }),
     );
     return ok(refreshed);
   }
@@ -351,7 +353,7 @@ export class TicketService {
     input: DeleteTicketInput,
   ): Promise<Result<{ ticketId: string }, DeleteError>> {
     if (!hasManageGuild(input.actorPermissionsBits)) {
-      return err(new PermissionError(i18n.tickets.errors.notAdmin));
+      return err(new PermissionError(i18nTickets.errors.notAdmin));
     }
     const ticket = await this.db.ticket.findUnique({
       where: { id: input.ticketId },
@@ -469,14 +471,17 @@ export class TicketService {
         : undefined;
 
     const type = await this.db.panelTicketType.findUnique({ where: { id: ticket.panelTypeId } });
-    const payload = buildWelcomeMessage({
-      state,
-      ticketId: ticket.id,
-      ...(type?.welcomeMessage !== null && type?.welcomeMessage !== undefined
-        ? { bodyOverride: type.welcomeMessage }
-        : {}),
-      ...(claimedByDisplay !== undefined ? { claimedByDisplay } : {}),
-    });
+    const payload = buildWelcomeMessage(
+      {
+        state,
+        ticketId: ticket.id,
+        ...(type?.welcomeMessage !== null && type?.welcomeMessage !== undefined
+          ? { bodyOverride: type.welcomeMessage }
+          : {}),
+        ...(claimedByDisplay !== undefined ? { claimedByDisplay } : {}),
+      },
+      this.branding,
+    );
 
     try {
       await this.gateway.editWelcomeMessage(ticket.channelId, ticket.welcomeMessageId, payload);

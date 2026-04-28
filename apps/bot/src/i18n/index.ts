@@ -1,8 +1,15 @@
+import { tickets as enTickets, format } from '@discord-bot/tickets-core';
+
 import { branding } from '../config/branding.js';
 
 import { common as enCommon } from './en/common.js';
-import { tickets as enTickets } from './en/tickets.js';
 
+// `tickets` is the canonical ticket-domain copy bundle, owned by
+// @discord-bot/tickets-core so the dashboard can read identical strings.
+// `common` is bot-specific (boot logs, generic command errors) and lives
+// here. Locale switching is a no-op today (single 'en' bundle shipped) —
+// the structure is preserved so adding a 'ko' bundle later is a translation
+// PR, not a refactor.
 const dictionaries = {
   en: { common: enCommon, tickets: enTickets },
   // ko: { common: koCommon, tickets: koTickets },  // TODO: add when ko strings exist
@@ -12,13 +19,4 @@ type Dictionary = typeof dictionaries.en;
 
 export const i18n: Dictionary = dictionaries[branding.locale === 'ko' ? 'en' : branding.locale];
 
-/**
- * Substitute `{var}` placeholders in a template string.
- * Unknown keys are left untouched (visible as `{key}`) for easy detection.
- */
-export function format(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => {
-    const value = vars[key];
-    return value !== undefined ? String(value) : match;
-  });
-}
+export { format };

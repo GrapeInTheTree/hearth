@@ -1,5 +1,4 @@
 import { PermissionError } from '@discord-bot/shared';
-import { PermissionFlagsBits } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,18 +8,24 @@ import {
   isSupportStaff,
 } from '../../../src/lib/permissions.js';
 
+// MANAGE_GUILD = bit 5 (= 32 = 0x20). Discord API constant — see
+// https://discord.com/developers/docs/topics/permissions. Inlined as bigint
+// so this test stays free of the discord.js runtime.
+const MANAGE_GUILD_BIT = 1n << 5n;
+const MANAGE_CHANNELS_BIT = 1n << 4n;
+
 describe('hasManageGuild', () => {
   it('returns true when ManageGuild bit is set', () => {
-    expect(hasManageGuild(PermissionFlagsBits.ManageGuild)).toBe(true);
+    expect(hasManageGuild(MANAGE_GUILD_BIT)).toBe(true);
   });
 
   it('returns true when bitfield includes ManageGuild + others', () => {
-    const bits = PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageChannels;
+    const bits = MANAGE_GUILD_BIT | MANAGE_CHANNELS_BIT;
     expect(hasManageGuild(bits)).toBe(true);
   });
 
   it('returns false when bit is unset', () => {
-    expect(hasManageGuild(PermissionFlagsBits.ManageChannels)).toBe(false);
+    expect(hasManageGuild(MANAGE_CHANNELS_BIT)).toBe(false);
   });
 
   it('returns false for empty bitfield', () => {
@@ -52,7 +57,7 @@ describe('assert helpers', () => {
   });
 
   it('assertManageGuild does not throw when bit set', () => {
-    expect(() => assertManageGuild(PermissionFlagsBits.ManageGuild)).not.toThrow();
+    expect(() => assertManageGuild(MANAGE_GUILD_BIT)).not.toThrow();
   });
 
   it('assertSupportStaff throws PermissionError on miss', () => {

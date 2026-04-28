@@ -1,12 +1,14 @@
 import { db, type DbClient } from '@discord-bot/database';
+import {
+  GuildConfigService,
+  PanelService,
+  TicketService,
+  type DiscordGateway,
+} from '@discord-bot/tickets-core';
 import { container } from '@sapphire/framework';
 
 import { branding, type Branding } from './config/branding.js';
 import { env, type Env } from './config/env.js';
-import { GuildConfigService } from './services/guildConfigService.js';
-import { PanelService } from './services/panelService.js';
-import type { DiscordGateway } from './services/ports/discordGateway.js';
-import { TicketService } from './services/ticketService.js';
 
 export interface Services {
   readonly guildConfig: GuildConfigService;

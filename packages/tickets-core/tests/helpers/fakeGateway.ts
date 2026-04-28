@@ -5,7 +5,7 @@ import type {
   ModlogEmbed,
   PanelMessagePayload,
   SendWelcomeMessageInput,
-} from '../../src/services/ports/discordGateway.js';
+} from '../../src/ports/discordGateway.js';
 
 export interface FakeGatewayCall {
   readonly op: string;

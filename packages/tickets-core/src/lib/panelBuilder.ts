@@ -1,5 +1,11 @@
 import type { PanelTicketType } from '@discord-bot/database';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import {
+  type APIActionRowComponent,
+  type APIButtonComponentWithCustomId,
+  type APIComponentInMessageActionRow,
+  ButtonStyle,
+  ComponentType,
+} from 'discord-api-types/v10';
 
 import { encode } from './customId.js';
 
@@ -10,18 +16,29 @@ import { encode } from './customId.js';
 // Discord allows up to 5 buttons per ActionRow and up to 5 rows per
 // message. We chunk types across rows respecting the 5-per-row limit;
 // an operator with 25+ types should split them across multiple panels.
+//
+// Output is plain JSON (discord-api-types shapes) so this module — and
+// transitively all of @discord-bot/tickets-core — never imports the
+// discord.js runtime. The bot's djs gateway implementation passes the
+// JSON straight through to channel.send({ components }).
 
 const MAX_BUTTONS_PER_ROW = 5;
 const MAX_ROWS_PER_MESSAGE = 5;
 
-const STYLE_MAP: Record<string, ButtonStyle> = {
+type CustomIdButtonStyle =
+  | ButtonStyle.Primary
+  | ButtonStyle.Secondary
+  | ButtonStyle.Success
+  | ButtonStyle.Danger;
+
+const STYLE_MAP: Record<string, CustomIdButtonStyle> = {
   primary: ButtonStyle.Primary,
   secondary: ButtonStyle.Secondary,
   success: ButtonStyle.Success,
   danger: ButtonStyle.Danger,
 };
 
-export type PanelComponentRow = ReturnType<ActionRowBuilder<ButtonBuilder>['toJSON']>;
+export type PanelComponentRow = APIActionRowComponent<APIComponentInMessageActionRow>;
 
 /**
  * Render the panel's button rows. Empty `types` yields zero rows — the
@@ -44,23 +61,25 @@ export function buildPanelComponents(types: readonly PanelTicketType[]): PanelCo
   const rows: PanelComponentRow[] = [];
   for (let i = 0; i < ordered.length; i += MAX_BUTTONS_PER_ROW) {
     const slice = ordered.slice(i, i + MAX_BUTTONS_PER_ROW);
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ...slice.map((t) => buildButton(t)),
-    );
-    rows.push(row.toJSON());
+    rows.push({
+      type: ComponentType.ActionRow,
+      components: slice.map((t) => buildButton(t)),
+    });
   }
   return rows;
 }
 
-function buildButton(type: PanelTicketType): ButtonBuilder {
-  const builder = new ButtonBuilder()
-    .setCustomId(encode('panel:open', { panelId: type.panelId, typeId: type.id }))
-    .setLabel(type.buttonLabel ?? type.name)
-    .setStyle(STYLE_MAP[type.buttonStyle] ?? ButtonStyle.Success);
+function buildButton(type: PanelTicketType): APIButtonComponentWithCustomId {
+  const button: APIButtonComponentWithCustomId = {
+    type: ComponentType.Button,
+    style: STYLE_MAP[type.buttonStyle] ?? ButtonStyle.Success,
+    custom_id: encode('panel:open', { panelId: type.panelId, typeId: type.id }),
+    label: type.buttonLabel ?? type.name,
+  };
   if (type.emoji !== '') {
-    builder.setEmoji(type.emoji);
+    return { ...button, emoji: { name: type.emoji } };
   }
-  return builder;
+  return button;
 }
 
 function byButtonOrder(a: PanelTicketType, b: PanelTicketType): number {

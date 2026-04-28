@@ -1,4 +1,12 @@
 import { DiscordApiError } from '@discord-bot/shared';
+import type {
+  CreateTicketChannelInput,
+  DiscordGateway,
+  ModlogEmbed,
+  PanelMessagePayload,
+  SendWelcomeMessageInput,
+  WelcomeMessagePayload,
+} from '@discord-bot/tickets-core';
 import {
   type APIEmbed,
   type Client,
@@ -9,16 +17,6 @@ import {
   PermissionFlagsBits,
   type TextChannel,
 } from 'discord.js';
-
-import type { WelcomeMessagePayload } from '../../lib/welcomeBuilder.js';
-
-import type {
-  CreateTicketChannelInput,
-  DiscordGateway,
-  ModlogEmbed,
-  PanelMessagePayload,
-  SendWelcomeMessageInput,
-} from './discordGateway.js';
 
 // Production implementation of DiscordGateway. Wraps a SapphireClient and
 // converts every discord.js exception into DiscordApiError so service code
@@ -77,7 +75,7 @@ export class DjsDiscordGateway implements DiscordGateway {
           : undefined;
       const message = await channel.send({
         ...(mentionLine !== undefined ? { content: mentionLine } : {}),
-        embeds: input.payload.embeds as APIEmbed[],
+        embeds: input.payload.embeds,
         components: input.payload.components as never,
         allowedMentions: { roles: [...input.pingRoleIds] },
       });
@@ -97,7 +95,7 @@ export class DjsDiscordGateway implements DiscordGateway {
       const channel = await this.fetchTextChannel(channelId);
       const message = await channel.messages.fetch(messageId);
       await message.edit({
-        embeds: payload.embeds as APIEmbed[],
+        embeds: payload.embeds,
         components: payload.components as never,
       });
     });

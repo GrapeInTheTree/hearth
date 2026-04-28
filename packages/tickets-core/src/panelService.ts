@@ -2,10 +2,9 @@ import type { DbClient, Panel, PanelTicketType, Prisma } from '@discord-bot/data
 import { ConflictError, err, NotFoundError, ok, type Result } from '@discord-bot/shared';
 import type { ValidationError } from '@discord-bot/shared';
 
-import type { Branding } from '../config/branding.js';
-import { i18n } from '../i18n/index.js';
-import { buildPanelComponents } from '../lib/panelBuilder.js';
-
+import type { Branding } from './branding.js';
+import { tickets as i18nTickets } from './i18n/index.js';
+import { buildPanelComponents } from './lib/panelBuilder.js';
 import type { DiscordGateway, PanelMessagePayload } from './ports/discordGateway.js';
 
 const PLACEHOLDER_MESSAGE_ID = 'pending';
@@ -38,7 +37,7 @@ export interface AddTicketTypeInput {
   readonly supportRoleIds: readonly string[];
   readonly pingRoleIds: readonly string[];
   readonly perUserLimit: number | null;
-  /** Optional override; null/undefined falls back to i18n.tickets.welcome.default. */
+  /** Optional override; null/undefined falls back to i18nTickets.welcome.default. */
   readonly welcomeMessage?: string;
 }
 
@@ -85,8 +84,8 @@ export class PanelService {
       include: { ticketTypes: true },
     });
 
-    const embedTitle = input.embedTitle ?? i18n.tickets.panel.defaultEmbedTitle;
-    const embedDescription = input.embedDescription ?? i18n.tickets.panel.defaultEmbedDescription;
+    const embedTitle = input.embedTitle ?? i18nTickets.panel.defaultEmbedTitle;
+    const embedDescription = input.embedDescription ?? i18nTickets.panel.defaultEmbedDescription;
 
     if (existing === null) {
       // Create row (no types yet) so any subsequent /panel ticket-type add

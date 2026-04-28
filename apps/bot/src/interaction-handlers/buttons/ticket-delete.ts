@@ -1,4 +1,6 @@
 import { PermissionError } from '@discord-bot/shared';
+import { decode, encode, matchesAction } from '@discord-bot/tickets-core';
+import { hasManageGuild } from '@discord-bot/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import {
   ActionRowBuilder,
@@ -9,9 +11,7 @@ import {
 } from 'discord.js';
 
 import { i18n } from '../../i18n/index.js';
-import { decode, encode, matchesAction } from '../../lib/customId.js';
 import { readMemberPermissionsBits, replyAppError } from '../../lib/interactionHelpers.js';
-import { hasManageGuild } from '../../lib/permissions.js';
 
 interface DeletePayload {
   readonly ticketId: string;

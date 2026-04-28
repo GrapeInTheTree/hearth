@@ -1,14 +1,14 @@
 import type { TicketStatus } from '@discord-bot/database';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { branding } from '../../../src/config/branding.js';
 import {
   type AddTicketTypeInput,
   PanelService,
   type UpsertPanelInput,
-} from '../../../src/services/panelService.js';
+} from '../../../src/panelService.js';
 import { createFakeDb, type FakeDb } from '../../helpers/fakeDb.js';
 import { FakeDiscordGateway } from '../../helpers/fakeGateway.js';
+import { branding } from '../../helpers/testBranding.js';
 
 type TicketRowStatus = TicketStatus;
 

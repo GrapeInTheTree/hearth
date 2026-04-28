@@ -1,7 +1,7 @@
 import { ValidationError } from '@discord-bot/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GuildConfigService } from '../../../src/services/guildConfigService.js';
+import { GuildConfigService } from '../../../src/guildConfigService.js';
 import { createFakeDb, type FakeDb } from '../../helpers/fakeDb.js';
 
 describe('GuildConfigService', () => {

@@ -5,15 +5,18 @@ import {
   NotFoundError,
   PermissionError,
 } from '@discord-bot/shared';
-import { PermissionFlagsBits } from 'discord.js';
 import { describe, expect, it } from 'vitest';
 
-import { branding } from '../../../src/config/branding.js';
-import { GuildConfigService } from '../../../src/services/guildConfigService.js';
-import { PanelService } from '../../../src/services/panelService.js';
-import { TicketService } from '../../../src/services/ticketService.js';
+import { GuildConfigService } from '../../../src/guildConfigService.js';
+import { PanelService } from '../../../src/panelService.js';
+import { TicketService } from '../../../src/ticketService.js';
 import { createFakeDb, type FakeDb } from '../../helpers/fakeDb.js';
 import { FakeDiscordGateway } from '../../helpers/fakeGateway.js';
+import { branding } from '../../helpers/testBranding.js';
+
+// Discord ManageGuild permission bit (= 1 << 5). Inlined as bigint so this
+// test stays free of the discord.js runtime.
+const MANAGE_GUILD_BIT = 1n << 5n;
 
 interface Harness {
   db: FakeDb;
@@ -407,7 +410,7 @@ describe('TicketService.deleteTicket', () => {
     const result = await h.service.deleteTicket({
       ticketId: opened.value.id,
       actorId: 'u-admin',
-      actorPermissionsBits: PermissionFlagsBits.ManageGuild,
+      actorPermissionsBits: MANAGE_GUILD_BIT,
     });
     expect(result.ok).toBe(true);
 
@@ -426,7 +429,7 @@ describe('TicketService.deleteTicket', () => {
     await h.service.deleteTicket({
       ticketId: opened.value.id,
       actorId: 'u-admin',
-      actorPermissionsBits: PermissionFlagsBits.ManageGuild,
+      actorPermissionsBits: MANAGE_GUILD_BIT,
     });
     expect(h.gateway.callsOf('postModlogSummary')).toHaveLength(0);
     expect(h.gateway.callsOf('deleteChannel')).toHaveLength(1);
@@ -437,7 +440,7 @@ describe('TicketService.deleteTicket', () => {
     const result = await h.service.deleteTicket({
       ticketId: 'nope',
       actorId: 'u-admin',
-      actorPermissionsBits: PermissionFlagsBits.ManageGuild,
+      actorPermissionsBits: MANAGE_GUILD_BIT,
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toBeInstanceOf(NotFoundError);
@@ -472,7 +475,7 @@ describe('TicketService.markChannelOrphaned', () => {
     await h.service.deleteTicket({
       ticketId: opened.value.id,
       actorId: 'u-admin',
-      actorPermissionsBits: PermissionFlagsBits.ManageGuild,
+      actorPermissionsBits: MANAGE_GUILD_BIT,
     });
     // After deleteTicket, the channel is in recentlyDeleted set and the row is gone.
     await expect(h.service.markChannelOrphaned(opened.value.channelId)).resolves.toBeUndefined();

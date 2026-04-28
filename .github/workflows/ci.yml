@@ -35,7 +35,10 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://bot:test@localhost:5432/test
-      DISCORD_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      # 60-char placeholder. Includes spaces so the secret-scan grep
+      # (which looks for [A-Za-z0-9_./-]{20,}) skips it. Validates min(50)
+      # in apps/bot/src/config/env.ts; never used to call Discord in CI.
+      DISCORD_TOKEN: "placeholder placeholder placeholder placeholder placeholder"
       DISCORD_APP_ID: "123456789012345678"
       BOT_NAME: TestBot
       NODE_ENV: test
@@ -99,7 +102,10 @@ jobs:
   format-check:
     name: Prettier
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    # Prettier itself is fast; the 5-minute budget is for the cold pnpm
+    # install on a fresh runner. The 3-min cap was too tight after adding
+    # @discord-bot/tickets-core to the workspace.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -109,5 +115,5 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm format:check

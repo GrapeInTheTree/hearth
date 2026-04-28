@@ -1,6 +1,5 @@
+import { SnowflakeSchema } from '@discord-bot/tickets-core';
 import { z } from 'zod';
-
-import { SnowflakeSchema } from '../lib/snowflake.js';
 
 const EnvSchema = z.object({
   // Discord — required

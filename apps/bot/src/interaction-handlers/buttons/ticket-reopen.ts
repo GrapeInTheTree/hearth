@@ -1,7 +1,7 @@
+import { decode, matchesAction } from '@discord-bot/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import type { ButtonInteraction } from 'discord.js';
 
-import { decode, matchesAction } from '../../lib/customId.js';
 import { readMemberRoleIds, replyAppError } from '../../lib/interactionHelpers.js';
 
 interface ReopenPayload {

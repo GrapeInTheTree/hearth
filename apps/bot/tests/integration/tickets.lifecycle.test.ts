@@ -1,15 +1,15 @@
 import { TicketStatus } from '@discord-bot/database';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { branding } from '../../src/config/branding.js';
-import { GuildConfigService } from '../../src/services/guildConfigService.js';
+import { GuildConfigService } from '@discord-bot/tickets-core';
 import {
   type AddTicketTypeInput,
   PanelService,
   type UpsertPanelInput,
-} from '../../src/services/panelService.js';
-import { TicketService } from '../../src/services/ticketService.js';
-import { FakeDiscordGateway } from '../helpers/fakeGateway.js';
+} from '@discord-bot/tickets-core';
+import { TicketService } from '@discord-bot/tickets-core';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { FakeDiscordGateway } from '../../../../packages/tickets-core/tests/helpers/fakeGateway.js';
+import { branding } from '../../src/config/branding.js';
 import { type IntegrationDb, startIntegrationDb } from '../helpers/testDb.js';
 
 const SHOULD_RUN = process.env['RUN_INTEGRATION'] === '1';

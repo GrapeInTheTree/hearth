@@ -7,7 +7,7 @@ export const tickets = {
     // Defaults used when /panel create is invoked without title/description
     // options. Operators are encouraged to provide their own copy via the
     // slash command — these strings are intentionally generic so a fresh
-    // deployment is recognizable as "needs configuration" rather than "Fannie".
+    // deployment is recognizable as "needs configuration".
     defaultEmbedTitle: 'Contact Team',
     defaultEmbedDescription: 'Click a button below to open a ticket.',
   },
@@ -52,3 +52,5 @@ export const tickets = {
       'The bot is not yet configured for tickets. An administrator must run /setup first.',
   },
 } as const;
+
+export type TicketsBundle = typeof tickets;

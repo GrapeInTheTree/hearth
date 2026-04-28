@@ -1,8 +1,8 @@
+import { PanelService, type UpsertPanelInput } from '@discord-bot/tickets-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { FakeDiscordGateway } from '../../../../packages/tickets-core/tests/helpers/fakeGateway.js';
 import { branding } from '../../src/config/branding.js';
-import { PanelService, type UpsertPanelInput } from '../../src/services/panelService.js';
-import { FakeDiscordGateway } from '../helpers/fakeGateway.js';
 import { type IntegrationDb, startIntegrationDb } from '../helpers/testDb.js';
 
 const SHOULD_RUN = process.env['RUN_INTEGRATION'] === '1';

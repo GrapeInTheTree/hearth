@@ -1,9 +1,9 @@
 import { ConflictError, NotFoundError } from '@discord-bot/shared';
+import { decode, matchesAction } from '@discord-bot/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { type ButtonInteraction, MessageFlags } from 'discord.js';
 
 import { format, i18n } from '../../i18n/index.js';
-import { decode, matchesAction } from '../../lib/customId.js';
 
 interface PanelOpenPayload {
   readonly panelId: string;

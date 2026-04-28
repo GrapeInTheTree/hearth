@@ -1,44 +1,44 @@
 {
-  "name": "@discord-bot/bot",
+  "name": "@discord-bot/tickets-core",
   "version": "0.0.0",
   "private": true,
-  "description": "Discord bot runtime — the deployable.",
+  "description": "Tickets domain logic — services, ports, schemas. Imported by both apps/bot and apps/dashboard.",
   "license": "UNLICENSED",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch --onSuccess \"node --env-file-if-exists=.env dist/index.js\"",
-    "start": "node dist/index.js",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run",
-    "test:integration": "RUN_INTEGRATION=1 vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "clean": "rm -rf dist .turbo *.tsbuildinfo coverage"
   },
   "dependencies": {
     "@discord-bot/database": "workspace:*",
     "@discord-bot/shared": "workspace:*",
-    "@discord-bot/tickets-core": "workspace:*",
-    "@sapphire/framework": "5.5.0",
-    "@sapphire/pieces": "4.4.1",
-    "@sapphire/plugin-logger": "4.0.2",
-    "@sapphire/utilities": "3.18.2",
-    "discord.js": "14.26.3",
+    "discord-api-types": "0.38.47",
     "zod": "3.24.1"
   },
   "devDependencies": {
     "@discord-bot/eslint-config": "workspace:*",
     "@discord-bot/tsconfig": "workspace:*",
-    "@prisma/adapter-pg": "7.8.0",
-    "@testcontainers/postgresql": "11.14.0",
     "@types/node": "22.10.2",
     "@vitest/coverage-v8": "2.1.8",
     "eslint": "9.17.0",
     "tsup": "8.3.5",
-    "tsx": "4.19.2",
     "typescript": "5.8.3",
     "vitest": "2.1.8"
   }

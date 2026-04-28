@@ -2,7 +2,7 @@ import type { Prisma } from '@discord-bot/database';
 import { type DbClient, type GuildConfig } from '@discord-bot/database';
 import { err, ok, type Result, ValidationError } from '@discord-bot/shared';
 
-import { SnowflakeSchema } from '../lib/snowflake.js';
+import { SnowflakeSchema } from './lib/snowflake.js';
 
 /**
  * Per-guild config service. One row per Discord guild the bot serves.
