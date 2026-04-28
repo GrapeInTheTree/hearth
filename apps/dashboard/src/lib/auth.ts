@@ -13,8 +13,19 @@ import { env } from './env';
 // bitfield in each entry — that's how we authorize Manage Guild
 // without ever needing the bot token.
 
+// Auth.js defaults `useSecureCookies` to true whenever NODE_ENV=production,
+// which forces `__Secure-` cookie name prefixes. Browsers refuse those over
+// http://, so a production-built dashboard served over plain HTTP (e.g. local
+// docker run, or any reverse-proxy setup that terminates TLS upstream and
+// forwards http) drops the PKCE verifier cookie → callback fails with
+// "InvalidCheck: pkceCodeVerifier value could not be parsed". Tying secure
+// cookies to the actual URL scheme keeps both production (https) and local
+// docker (http) working without env-flag babysitting.
+const useSecureCookies = env.NEXTAUTH_URL.startsWith('https://');
+
 const config: NextAuthConfig = {
   trustHost: true,
+  useSecureCookies,
   secret: env.NEXTAUTH_SECRET,
   session: { strategy: 'jwt' },
   providers: [
