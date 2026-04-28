@@ -30,12 +30,28 @@ export async function fetchUserGuilds(
     return cached.guilds;
   }
 
-  const response = await fetchImpl('https://discord.com/api/v10/users/@me/guilds', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl('https://discord.com/api/v10/users/@me/guilds', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    // Network error talking to Discord. If we have a cached value (even
+    // expired), keep using it so the dashboard doesn't redirect-loop the
+    // operator to /select-guild on a transient hiccup. The redirect-loop
+    // matters because Next.js 15 caches the redirect-payload client-side;
+    // once a /g/<guildId> request resolves to "redirect to /select-guild"
+    // the router keeps serving that until a hard refresh. Returning stale
+    // data here keeps the URL — and the cache — accurate.
+    if (cached !== undefined) return cached.guilds;
+    return [];
+  }
+
   if (!response.ok) {
-    // Don't blow up the dashboard — an empty list shows the empty state
-    // (which links to the bot invite). Token refresh is Phase 2.x.
+    // Same fallback policy as the network-error path above. Empty list is
+    // the truthful signal that auth needs reconfiguring; stale cache is
+    // the right choice when Discord is temporarily slow or rate-limiting.
+    if (cached !== undefined) return cached.guilds;
     return [];
   }
   const raw = (await response.json()) as RawGuild[];
