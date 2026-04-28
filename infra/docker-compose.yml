@@ -1,26 +1,39 @@
-# Single compose file — handles both dev (postgres only) and prod (bot + postgres).
-# The bot image is built locally from apps/bot/Dockerfile (no registry needed).
+# Single compose file — handles dev (postgres only), bot-only prod, and
+# the full bot + dashboard prod stack. All images build locally from the
+# repo's Dockerfiles; no registry is involved.
 #
-# Local dev (bot runs via `pnpm dev`, only postgres in docker):
+# Local dev (bot/dashboard run via pnpm; only postgres in docker):
 #   docker compose -f infra/docker-compose.yml up -d postgres
-#   pnpm dev
+#   pnpm dev                       # bot
+#   pnpm --filter @discord-bot/dashboard dev   # dashboard
 #
 # Production (VM):
 #   git pull
 #   cp apps/bot/.env.example apps/bot/.env && vi apps/bot/.env
+#   cp apps/dashboard/.env.example apps/dashboard/.env && vi apps/dashboard/.env
 #   docker compose -f infra/docker-compose.yml up -d --build
 #
-# Rebuild only:
-#   docker compose -f infra/docker-compose.yml build bot
-#
 # Required env in apps/bot/.env:
-#   POSTGRES_PASSWORD, DISCORD_TOKEN, DISCORD_APP_ID, BOT_NAME,
+#   DISCORD_TOKEN, DISCORD_APP_ID, BOT_NAME, INTERNAL_API_TOKEN,
 #   DATABASE_URL=postgresql://bot:${POSTGRES_PASSWORD}@postgres:5432/discord_bot
 #   (Local dev DATABASE_URL: postgresql://bot:bot@localhost:5432/discord_bot)
+#
+# Required env in apps/dashboard/.env:
+#   DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, NEXTAUTH_URL, NEXTAUTH_SECRET,
+#   INTERNAL_API_TOKEN (must match bot), DATABASE_URL (same as bot's), BOT_NAME
+#
+# Host-port plan: every service binds to 127.0.0.1 only — public exposure
+# is the operator's nginx job (see infra/nginx/bot-dashboard.fanx.xyz.conf.example).
+#
+#   service        host port      env override         note
+#   ─────────────  ─────────────  ───────────────────  ────────────────────────
+#   bot internal   3100           BOT_HEALTH_PORT      /healthz + /internal/*
+#   dashboard      3200           DASHBOARD_PORT       Next.js, nginx upstream
+#   postgres       5433           POSTGRES_PORT        avoid host pg's 5432
 
 services:
   bot:
-    image: discord-bot:local
+    image: discord-bot-bot:local
     build:
       context: ..
       dockerfile: apps/bot/Dockerfile
@@ -30,12 +43,40 @@ services:
       # via the compose network. The env_file's DATABASE_URL uses "localhost"
       # so `pnpm dev` (host-side) keeps working without a second .env file.
       DATABASE_URL: postgresql://${POSTGRES_USER:-bot}:${POSTGRES_PASSWORD:-bot}@postgres:5432/${POSTGRES_DB:-discord_bot}?schema=public
+      PORT: "3000"
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "127.0.0.1:3000:3000" # /healthz only on localhost
+      - "127.0.0.1:${BOT_HEALTH_PORT:-3100}:3000" # /healthz + /internal/* on localhost only
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  dashboard:
+    image: discord-bot-dashboard:local
+    build:
+      context: ..
+      dockerfile: apps/dashboard/Dockerfile
+    env_file: ../apps/dashboard/.env
+    environment:
+      # Inside the compose network, the dashboard reaches the bot via
+      # service-name DNS. The env_file's BOT_INTERNAL_URL still uses
+      # localhost so host-side `pnpm dev` works.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bot}:${POSTGRES_PASSWORD:-bot}@postgres:5432/${POSTGRES_DB:-discord_bot}?schema=public
+      BOT_INTERNAL_URL: http://bot:3000
+      PORT: "3200"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bot:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-3200}:3200" # nginx upstream
     logging:
       driver: json-file
       options:
@@ -49,7 +90,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot}
       POSTGRES_DB: ${POSTGRES_DB:-discord_bot}
     ports:
-      - "127.0.0.1:5432:5432" # exposed on localhost only — for local dev (`pnpm dev`)
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432" # 5433 host-side avoids native pg
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -62,9 +103,10 @@ services:
 
   # redis is added in Phase 4 (Reminders/Giveaways/multi-shard)
   # redis:
+  #   image: discord-bot-cache:local  (placeholder — slot reserved)
   #   image: redis:7-alpine
   #   restart: unless-stopped
-  #   command: ["redis-server", "--appendonly", "yes"]
+  #   command: ['redis-server', '--appendonly', 'yes']
   #   volumes:
   #     - redisdata:/data
 
