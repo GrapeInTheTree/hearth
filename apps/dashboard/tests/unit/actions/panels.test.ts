@@ -1,4 +1,6 @@
 import { DiscordApiError, NotFoundError, ok } from '@hearth/shared';
+// NotFoundError is still used by botClient mocks (the bot side hasn't migrated
+// off AppError; only the dashboard's own action returns now use ActionError).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPanel, deletePanel, retrySyncPanel, updatePanel } from '@/actions/panels';
@@ -172,7 +174,7 @@ describe('deletePanel', () => {
     const result = await deletePanel({ guildId, panelId: 'missing' });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(NotFoundError);
+    expect(result.error.code).toBe('NOT_FOUND');
   });
 });
 

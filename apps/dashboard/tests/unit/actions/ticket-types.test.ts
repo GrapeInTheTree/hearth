@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, ok } from '@hearth/shared';
+import { ok } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { addTicketType, editTicketType, removeTicketType } from '@/actions/ticket-types';
@@ -91,7 +91,7 @@ describe('addTicketType', () => {
     const result = await addTicketType({ guildId, input: validInput });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(ConflictError);
+    expect(result.error.code).toBe('CONFLICT');
     expect(dbMock.panelTicketType.create).not.toHaveBeenCalled();
   });
 
@@ -104,7 +104,7 @@ describe('addTicketType', () => {
     const result = await addTicketType({ guildId, input: validInput });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(NotFoundError);
+    expect(result.error.code).toBe('NOT_FOUND');
   });
 
   it('flags discordSyncFailed but commits the DB row when bot is down', async () => {
@@ -152,7 +152,7 @@ describe('editTicketType', () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(NotFoundError);
+    expect(result.error.code).toBe('NOT_FOUND');
   });
 });
 
@@ -179,7 +179,7 @@ describe('removeTicketType', () => {
     const result = await removeTicketType({ guildId, typeId: 't1' });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(ConflictError);
+    expect(result.error.code).toBe('CONFLICT');
     expect(result.error.message).toMatch(/3 ticket\(s\) reference it/);
     expect(dbMock.panelTicketType.delete).not.toHaveBeenCalled();
   });

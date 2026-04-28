@@ -1,4 +1,4 @@
-import { ValidationError, ok } from '@hearth/shared';
+import { ok } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setArchiveCategory, setLogChannel } from '@/actions/guild-config';
@@ -61,7 +61,7 @@ describe('setArchiveCategory', () => {
     const result = await setArchiveCategory({ guildId, categoryId: 'not-a-snowflake' });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(ValidationError);
+    expect(result.error.code).toBe('VALIDATION_ERROR');
     expect(dbMock.guildConfig.upsert).not.toHaveBeenCalled();
   });
 
@@ -85,6 +85,6 @@ describe('setLogChannel', () => {
     const result = await setLogChannel({ guildId, channelId: 'bad' });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBeInstanceOf(ValidationError);
+    expect(result.error.code).toBe('VALIDATION_ERROR');
   });
 });
