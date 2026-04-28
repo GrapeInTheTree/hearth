@@ -1,6 +1,6 @@
-import { PermissionError } from '@discord-bot/shared';
-import { decode, encode, matchesAction } from '@discord-bot/tickets-core';
-import { hasManageGuild } from '@discord-bot/tickets-core';
+import { PermissionError } from '@hearth/shared';
+import { decode, encode, matchesAction } from '@hearth/tickets-core';
+import { hasManageGuild } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import {
   ActionRowBuilder,

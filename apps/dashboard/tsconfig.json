@@ -1,5 +1,5 @@
 {
-  "extends": "@discord-bot/tsconfig/web",
+  "extends": "@hearth/tsconfig/web",
   "compilerOptions": {
     "plugins": [{ "name": "next" }],
     "incremental": true,

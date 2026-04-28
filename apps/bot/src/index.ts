@@ -1,6 +1,6 @@
 import '@sapphire/plugin-logger/register';
 
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import { container as diContainer } from '@sapphire/framework';
 import {
   ApplicationCommandRegistries,

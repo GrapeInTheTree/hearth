@@ -9,7 +9,7 @@ binds to localhost only.
 
 - Docker + Docker Compose v2 (`docker compose version` >= 2.20)
 - Nginx + certbot (the operator's existing setup)
-- This repo cloned to a stable path (e.g. `/opt/discord-bot`)
+- This repo cloned to a stable path (e.g. `/opt/hearth`)
 - A subdomain pointing at the VM's external IP (e.g. `bot-dashboard.fanx.xyz`)
 - A Discord application with two redirect URIs allowlisted:
   - `http://localhost:3200/api/auth/callback/discord` (dev)
@@ -40,7 +40,7 @@ expire and operators sign in again.
 ### 3. Fill in `.env` files
 
 ```bash
-cd /opt/discord-bot
+cd /opt/hearth
 cp apps/bot/.env.example apps/bot/.env
 cp apps/dashboard/.env.example apps/dashboard/.env
 $EDITOR apps/bot/.env
@@ -74,7 +74,7 @@ Cert renewal runs via certbot's systemd timer; nothing to do here.
 ### 5. First boot
 
 ```bash
-cd /opt/discord-bot/infra
+cd /opt/hearth/infra
 ./deploy.sh
 ```
 
@@ -86,7 +86,7 @@ before starting, so schema drift is impossible.
 ## Subsequent deploys
 
 ```bash
-cd /opt/discord-bot/infra
+cd /opt/hearth/infra
 ./deploy.sh
 ```
 

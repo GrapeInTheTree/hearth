@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 // Unit tests only — services + lib + helpers using FakeDb + FakeGateway.
 // Integration tests (testcontainers pg 16) live in apps/bot/tests/integration
-// and import services from this package via @discord-bot/tickets-core.
+// and import services from this package via @hearth/tickets-core.
 //
 // Coverage thresholds match apps/bot (85/75/85/85). Excludes generated entry
 // points, the i18n bundle (data, no logic), and ports (interface declarations).

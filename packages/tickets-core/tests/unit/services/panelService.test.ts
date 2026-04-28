@@ -1,4 +1,4 @@
-import type { TicketStatus } from '@discord-bot/database';
+import type { TicketStatus } from '@hearth/database';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {

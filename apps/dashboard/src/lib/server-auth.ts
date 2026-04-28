@@ -1,5 +1,5 @@
-import { type Result, err, ok } from '@discord-bot/shared';
-import { PermissionError } from '@discord-bot/shared';
+import { type Result, err, ok } from '@hearth/shared';
+import { PermissionError } from '@hearth/shared';
 import { redirect } from 'next/navigation';
 
 import { auth } from './auth';

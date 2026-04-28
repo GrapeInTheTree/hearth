@@ -1,4 +1,4 @@
-// Public surface of @discord-bot/database. Everything downstream uses this
+// Public surface of @hearth/database. Everything downstream uses this
 // barrel — no other module imports from `@prisma/client` or the generated
 // folder directly. That keeps the Prisma generator output contained: if we
 // ever swap engines or move the generated path, only this file changes.

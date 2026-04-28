@@ -11,7 +11,7 @@ import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 // IDs and plain JSON shapes (discord-api-types) only. Anything richer
 // than `string` / `number` / `bigint` / `readonly Record<...>` is
 // suspicious. This is what makes services unit-testable without booting
-// the framework, and what lets @discord-bot/tickets-core stay free of
+// the framework, and what lets @hearth/tickets-core stay free of
 // the discord.js runtime so it can be imported by the dashboard.
 
 export interface PanelMessagePayload {

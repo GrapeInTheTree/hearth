@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 
-import { DiscordApiError, NotFoundError } from '@discord-bot/shared';
+import { DiscordApiError, NotFoundError } from '@hearth/shared';
 
 import { sendError, sendJson } from '../json.js';
 import type { InternalApiContext } from '../types.js';

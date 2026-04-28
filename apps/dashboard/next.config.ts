@@ -4,7 +4,7 @@ import type { NextConfig } from 'next';
 // packages on the fly — they ship as raw TS or as ESM dist that Next still
 // needs to walk for tree-shaking.
 //
-// `serverExternalPackages` keeps @discord-bot/database (and downstream
+// `serverExternalPackages` keeps @hearth/database (and downstream
 // tickets-core, since it imports TicketStatus + Prisma) off the client
 // bundle — these are server-only Node.js modules that pull node:path/fs
 // via Prisma's driver-adapter chain, which Webpack can't bundle.
@@ -13,10 +13,10 @@ import type { NextConfig } from 'next';
 // Docker runtime image (PR-7).
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ['@discord-bot/shared'],
+  transpilePackages: ['@hearth/shared'],
   serverExternalPackages: [
-    '@discord-bot/database',
-    '@discord-bot/tickets-core',
+    '@hearth/database',
+    '@hearth/tickets-core',
     '@prisma/client',
     '@prisma/adapter-pg',
   ],

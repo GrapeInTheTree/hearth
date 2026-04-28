@@ -44,7 +44,7 @@ that catches a class of misconfiguration. The full deploy flow lives in
       `apps/bot/.env.example` default (`bot`). Same value in both
       `DATABASE_URL` strings.
 - [ ] `.env` files are `chmod 600` and owned by the deploy user:
-      `sudo chown root:root /opt/discord-bot/apps/{bot,dashboard}/.env && sudo chmod 600 ...`
+      `sudo chown root:root /opt/hearth/apps/{bot,dashboard}/.env && sudo chmod 600 ...`
 - [ ] `git status` shows no `.env` files staged (gitignore covers them,
       but pre-flight check beats post-flight rotation).
 
@@ -124,7 +124,7 @@ that catches a class of misconfiguration. The full deploy flow lives in
 If anything above fails on first deploy:
 
 ```bash
-cd /opt/discord-bot/infra
+cd /opt/hearth/infra
 docker compose down
 git log --oneline -5         # last 5 main commits
 git checkout <previous good>

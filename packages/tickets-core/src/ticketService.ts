@@ -1,5 +1,5 @@
-import { type DbClient, type Ticket, TicketStatus } from '@discord-bot/database';
-import { Prisma } from '@discord-bot/database';
+import { type DbClient, type Ticket, TicketStatus } from '@hearth/database';
+import { Prisma } from '@hearth/database';
 import {
   ConflictError,
   DiscordApiError,
@@ -10,7 +10,7 @@ import {
   PermissionError,
   type Result,
   ValidationError,
-} from '@discord-bot/shared';
+} from '@hearth/shared';
 
 import type { Branding } from './branding.js';
 import type { GuildConfigService } from './guildConfigService.js';

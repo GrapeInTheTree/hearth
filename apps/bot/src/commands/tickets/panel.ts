@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '@discord-bot/shared';
+import { ConflictError, NotFoundError } from '@hearth/shared';
 import { Command } from '@sapphire/framework';
 import { ChannelType, MessageFlags } from 'discord.js';
 

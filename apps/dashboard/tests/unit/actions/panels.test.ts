@@ -1,4 +1,4 @@
-import { DiscordApiError, NotFoundError, ok } from '@discord-bot/shared';
+import { DiscordApiError, NotFoundError, ok } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPanel, deletePanel, retrySyncPanel, updatePanel } from '@/actions/panels';
@@ -13,7 +13,7 @@ const dbMock = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@discord-bot/database', () => ({
+vi.mock('@hearth/database', () => ({
   db: dbMock,
   TicketStatus: { open: 'open', claimed: 'claimed', closed: 'closed' },
   Prisma: {},

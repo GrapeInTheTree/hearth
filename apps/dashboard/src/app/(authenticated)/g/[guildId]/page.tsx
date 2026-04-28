@@ -1,5 +1,5 @@
-import { db } from '@discord-bot/database';
-import { TicketStatus } from '@discord-bot/database';
+import { db } from '@hearth/database';
+import { TicketStatus } from '@hearth/database';
 import Link from 'next/link';
 
 import { Topbar } from '@/components/layout/topbar';

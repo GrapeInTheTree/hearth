@@ -1,4 +1,4 @@
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import { notFound, redirect } from 'next/navigation';
 
 import { Topbar } from '@/components/layout/topbar';

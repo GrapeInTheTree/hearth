@@ -1,4 +1,4 @@
-import { decode, matchesAction } from '@discord-bot/tickets-core';
+import { decode, matchesAction } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import type { ButtonInteraction } from 'discord.js';
 

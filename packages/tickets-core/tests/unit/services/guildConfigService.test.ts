@@ -1,4 +1,4 @@
-import { ValidationError } from '@discord-bot/shared';
+import { ValidationError } from '@hearth/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { GuildConfigService } from '../../../src/guildConfigService.js';

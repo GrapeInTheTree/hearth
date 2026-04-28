@@ -1,5 +1,5 @@
-import type { DbClient } from '@discord-bot/database';
-import type { PanelService } from '@discord-bot/tickets-core';
+import type { DbClient } from '@hearth/database';
+import type { PanelService } from '@hearth/tickets-core';
 import type { Client } from 'discord.js';
 
 import type { Branding } from '../config/branding.js';

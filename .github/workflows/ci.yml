@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     # Prettier itself is fast; the 5-minute budget is for the cold pnpm
     # install on a fresh runner. The 3-min cap was too tight after adding
-    # @discord-bot/tickets-core to the workspace.
+    # @hearth/tickets-core to the workspace.
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4

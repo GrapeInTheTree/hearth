@@ -1,4 +1,4 @@
-import { PanelService, type UpsertPanelInput } from '@discord-bot/tickets-core';
+import { PanelService, type UpsertPanelInput } from '@hearth/tickets-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { FakeDiscordGateway } from '../../../../packages/tickets-core/tests/helpers/fakeGateway.js';

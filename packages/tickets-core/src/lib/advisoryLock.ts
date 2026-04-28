@@ -1,5 +1,5 @@
-import { type DbClient, Prisma } from '@discord-bot/database';
-import { ConflictError, InternalError } from '@discord-bot/shared';
+import { type DbClient, Prisma } from '@hearth/database';
+import { ConflictError, InternalError } from '@hearth/shared';
 
 // Postgres lock_timeout uses milliseconds. When acquisition fails, Postgres
 // raises SQLSTATE 55P03 ("lock_not_available"). We catch that specifically

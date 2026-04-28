@@ -36,11 +36,11 @@ COPY . .
 # `next build` is the dashboard's build step; placeholder env vars come
 # from apps/dashboard/package.json's build script (the build evaluates
 # env validation but never reaches the network).
-RUN pnpm --filter @discord-bot/database run db:generate && \
-    pnpm --filter @discord-bot/shared run build && \
-    pnpm --filter @discord-bot/database run build && \
-    pnpm --filter @discord-bot/tickets-core run build && \
-    pnpm --filter @discord-bot/dashboard run build
+RUN pnpm --filter @hearth/database run db:generate && \
+    pnpm --filter @hearth/shared run build && \
+    pnpm --filter @hearth/database run build && \
+    pnpm --filter @hearth/tickets-core run build && \
+    pnpm --filter @hearth/dashboard run build
 
 # ──────────────────────────────────────────────────────────────────
 # Stage 2: runtime

@@ -1,4 +1,4 @@
-import type { Branding } from '@discord-bot/tickets-core';
+import type { Branding } from '@hearth/tickets-core';
 
 import { env } from '../lib/env';
 

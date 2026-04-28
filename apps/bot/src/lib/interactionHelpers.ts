@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, PermissionError } from '@discord-bot/shared';
+import { ConflictError, NotFoundError, PermissionError } from '@hearth/shared';
 import { type Interaction, type ButtonInteraction, MessageFlags } from 'discord.js';
 
 import { i18n } from '../i18n/index.js';

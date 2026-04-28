@@ -7,7 +7,7 @@ import type { InternalApiContext } from '../types.js';
 
 // Shapes are defined here (rather than in tickets-core/schemas.ts) because
 // they're response payloads from the bot's local Discord cache, not domain
-// inputs. The dashboard imports a TypeScript type via @discord-bot/dashboard's
+// inputs. The dashboard imports a TypeScript type via @hearth/dashboard's
 // own client wrapper.
 
 export interface GuildSummary {

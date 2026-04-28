@@ -1,4 +1,4 @@
-import { db, TicketStatus } from '@discord-bot/database';
+import { db, TicketStatus } from '@hearth/database';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 

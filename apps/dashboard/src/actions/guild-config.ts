@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@discord-bot/database';
+import { db } from '@hearth/database';
 import {
   type PermissionError,
   type Result,
@@ -9,8 +9,8 @@ import {
   err,
   isErr,
   ok,
-} from '@discord-bot/shared';
-import { SnowflakeSchema } from '@discord-bot/tickets-core';
+} from '@hearth/shared';
+import { SnowflakeSchema } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
 
 import { authorizeGuild } from '@/lib/server-auth';

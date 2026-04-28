@@ -1,6 +1,6 @@
-import type { Prisma } from '@discord-bot/database';
-import { type DbClient, type GuildConfig } from '@discord-bot/database';
-import { err, ok, type Result, ValidationError } from '@discord-bot/shared';
+import type { Prisma } from '@hearth/database';
+import { type DbClient, type GuildConfig } from '@hearth/database';
+import { err, ok, type Result, ValidationError } from '@hearth/shared';
 
 import { SnowflakeSchema } from './lib/snowflake.js';
 

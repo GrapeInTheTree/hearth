@@ -1,5 +1,5 @@
-import { ConflictError, NotFoundError } from '@discord-bot/shared';
-import { decode, matchesAction } from '@discord-bot/tickets-core';
+import { ConflictError, NotFoundError } from '@hearth/shared';
+import { decode, matchesAction } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { type ButtonInteraction, MessageFlags } from 'discord.js';
 

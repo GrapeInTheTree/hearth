@@ -1,4 +1,4 @@
-import { ValidationError, ok } from '@discord-bot/shared';
+import { ValidationError, ok } from '@hearth/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setArchiveCategory, setLogChannel } from '@/actions/guild-config';
@@ -9,7 +9,7 @@ const dbMock = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@discord-bot/database', () => ({
+vi.mock('@hearth/database', () => ({
   db: dbMock,
   TicketStatus: { open: 'open', claimed: 'claimed', closed: 'closed' },
   Prisma: {},

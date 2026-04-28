@@ -1,10 +1,10 @@
-import { db, type DbClient } from '@discord-bot/database';
+import { db, type DbClient } from '@hearth/database';
 import {
   GuildConfigService,
   PanelService,
   TicketService,
   type DiscordGateway,
-} from '@discord-bot/tickets-core';
+} from '@hearth/tickets-core';
 import { container } from '@sapphire/framework';
 
 import { branding, type Branding } from './config/branding.js';

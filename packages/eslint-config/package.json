@@ -1,5 +1,5 @@
 {
-  "name": "@discord-bot/eslint-config",
+  "name": "@hearth/eslint-config",
   "version": "0.0.0",
   "private": true,
   "description": "Shared ESLint v9 flat config.",
