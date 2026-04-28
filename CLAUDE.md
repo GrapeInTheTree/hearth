@@ -399,6 +399,14 @@ infra/
 - `ChatInputCommandDenied` 이벤트 listener 필수 (Sapphire 자동 응답 X → "application did not respond")
 - DEV_GUILD_ID 변경 후 Sapphire가 in-memory 캐시 때문에 새 guild에 push skip → **해법**: `docker compose down bot` 후 `up -d` (full recreate)
 
+**Phase 1.1 backlog (deferred, 상세: vault `02_implementation/07-ticket-backlog.md`):**
+
+- **Transcript** — delete 시 HTML dump → modlog file attach (close 시점 X, S3 X)
+- **`/add` `/remove`** — 티켓 채널에 user/role 추가·제거, support only
+- **`/transfer`** — claim 재할당, support only (opener는 fact라 안 바뀜)
+
+PM/운영자 요청 들어오거나 정식 Phase 1.1 마감 시 PR-7로 묶어서.
+
 **다음 할 일:**
 
 1. **PM Support Test E2E 마무리** — 모든 lifecycle scenarios + role picker UX 확인
