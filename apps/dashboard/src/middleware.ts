@@ -5,9 +5,6 @@ import { type NextRequest, NextResponse } from 'next/server';
 // which the Edge runtime can't bundle. Instead, we check for the presence
 // of the NextAuth session cookie as a coarse signal, and the (authenticated)
 // layout does the real session validation server-side.
-//
-// Also injects an `x-pathname` header so RSC layouts can read the active
-// route — needed for sidebar `aria-current` without a client component.
 
 const SESSION_COOKIE_NAMES = [
   'authjs.session-token', // dev (HTTP)
@@ -17,9 +14,6 @@ const SESSION_COOKIE_NAMES = [
 export default function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('x-pathname', pathname);
-
   // Public paths
   if (
     pathname === '/login' ||
@@ -28,7 +22,7 @@ export default function middleware(req: NextRequest): NextResponse {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/favicon')
   ) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    return NextResponse.next();
   }
 
   const hasSessionCookie = SESSION_COOKIE_NAMES.some((name) => req.cookies.has(name));
@@ -38,7 +32,7 @@ export default function middleware(req: NextRequest): NextResponse {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  return NextResponse.next();
 }
 
 // Run on every page request except next/image and static assets.

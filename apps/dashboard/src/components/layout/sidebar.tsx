@@ -1,7 +1,9 @@
+'use client';
+
 import { Inbox, LayoutDashboard, Settings, Tag } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-import { Brand } from '@/components/layout/brand';
 import { t } from '@/i18n';
 import { cn } from '@/lib/cn';
 
@@ -21,16 +23,50 @@ const NAV_ITEMS: readonly NavItem[] = [
 
 interface SidebarProps {
   readonly guildId: string;
-  /** Active route path under /g/[guildId]. Empty string = overview. */
-  readonly activePath: string;
+  readonly brandName: string;
+  readonly brandIconUrl: string | undefined;
 }
 
-export function Sidebar({ guildId, activePath }: SidebarProps): React.JSX.Element {
+// Client component so the active-item highlight updates on every
+// client-side navigation. Server-side computation via the
+// (authenticated)/g/[guildId]/layout.tsx + x-pathname header doesn't work
+// here because Next.js App Router shares the same layout instance across
+// child page navigations — the layout (and thus a server-computed
+// activePath) only re-runs on a hard refresh.
+//
+// Brand props are passed in (rather than imported from @/config/branding)
+// so this client component doesn't drag the env-validating module into
+// the client bundle — that module reaches @hearth/tickets-core's barrel
+// which transitively imports pg/node:dns/net/tls.
+export function Sidebar({ guildId, brandName, brandIconUrl }: SidebarProps): React.JSX.Element {
   const base = `/g/${guildId}`;
+  const pathname = usePathname();
+  const activePath = pathname.startsWith(base) ? pathname.slice(base.length) : '';
+
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r bg-[color:var(--color-bg)]">
       <div className="flex h-14 items-center border-b px-6">
-        <Brand href="/select-guild" />
+        <Link
+          href="/select-guild"
+          className="flex items-center gap-2 text-[color:var(--color-fg)] transition-opacity hover:opacity-80"
+        >
+          {brandIconUrl !== undefined ? (
+            <img
+              src={brandIconUrl}
+              alt={brandName}
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-[var(--radius-sm)]"
+            />
+          ) : (
+            <span
+              className="h-6 w-6 rounded-[var(--radius-sm)]"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+              aria-hidden="true"
+            />
+          )}
+          <span className="font-semibold tracking-tight">{brandName}</span>
+        </Link>
       </div>
       <nav className="flex-1 px-3 py-6" aria-label="Primary">
         <ul className="flex flex-col gap-1">

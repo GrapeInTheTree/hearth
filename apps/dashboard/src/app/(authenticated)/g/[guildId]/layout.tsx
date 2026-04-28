@@ -1,7 +1,7 @@
-import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 import { Sidebar } from '@/components/layout/sidebar';
+import { branding } from '@/config/branding';
 import { auth } from '@/lib/auth';
 import { hasManageGuild } from '@/lib/auth-permissions';
 import { fetchUserGuilds } from '@/lib/discordOauth';
@@ -43,15 +43,9 @@ export default async function GuildLayout({
     notFound();
   }
 
-  // The active sub-route lives below /g/<guildId>; pass it to the sidebar
-  // for its `aria-current` highlighting.
-  const headersList = await headers();
-  const fullPath = headersList.get('x-pathname') ?? '';
-  const activePath = fullPath.replace(`/g/${guildId}`, '');
-
   return (
     <div className="flex min-h-screen">
-      <Sidebar guildId={guildId} activePath={activePath} />
+      <Sidebar guildId={guildId} brandName={branding.name} brandIconUrl={branding.iconUrl} />
       <div className="flex flex-1 flex-col">{children}</div>
     </div>
   );
