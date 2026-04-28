@@ -7,8 +7,8 @@ that catches a class of misconfiguration. The full deploy flow lives in
 
 ## DNS + Domain
 
-- [ ] `bot-dashboard.fanx.xyz` (or your chosen subdomain) has an A record
-      pointing at the VM's external IP. `dig +short bot-dashboard.fanx.xyz`
+- [ ] `dashboard.example.com` (or your chosen subdomain) has an A record
+      pointing at the VM's external IP. `dig +short dashboard.example.com`
       returns the right address.
 - [ ] No conflicting nginx site already serves the same hostname.
 - [ ] Cert renewal cron / systemd timer for certbot is healthy on the VM
@@ -24,7 +24,7 @@ that catches a class of misconfiguration. The full deploy flow lives in
       (`DISCORD_CLIENT_SECRET=`).
 - [ ] OAuth2 redirect URIs include both:
   - `http://localhost:3200/api/auth/callback/discord` (dev)
-  - `https://bot-dashboard.fanx.xyz/api/auth/callback/discord` (prod)
+  - `https://dashboard.example.com/api/auth/callback/discord` (prod)
 - [ ] Bot is invited to the target guild with at least the permissions in
       `docs/architecture/`'s invite scope notes (Manage Channels, Manage
       Roles, Send Messages, Embed Links, Use Slash Commands, View Audit
@@ -70,12 +70,12 @@ that catches a class of misconfiguration. The full deploy flow lives in
 
 ## nginx
 
-- [ ] `infra/nginx/bot-dashboard.fanx.xyz.conf.example` copied to
-      `/etc/nginx/sites-available/bot-dashboard.fanx.xyz` and the
+- [ ] `infra/nginx/dashboard.conf.example` copied to
+      `/etc/nginx/sites-available/dashboard.example.com` and the
       `server_name` adjusted.
 - [ ] Symlink in `sites-enabled/` (`sudo ln -s ...`).
 - [ ] `sudo nginx -t` passes before reload.
-- [ ] `sudo certbot --nginx -d bot-dashboard.fanx.xyz` ran successfully.
+- [ ] `sudo certbot --nginx -d dashboard.example.com` ran successfully.
       certbot rewrites the file in place to insert `ssl_certificate*`
       directives; that's expected.
 - [ ] `sudo systemctl reload nginx` after the cert is installed.
@@ -99,7 +99,7 @@ that catches a class of misconfiguration. The full deploy flow lives in
 - [ ] `curl -H 'Authorization: Bearer <INTERNAL_API_TOKEN>' http://localhost:3100/internal/guilds/list?ids=<your guild>`
       → returns the guild summary (the bot is a member).
 - [ ] `curl -I http://localhost:3200/login` → `200 OK` (returns the login HTML).
-- [ ] `https://bot-dashboard.fanx.xyz/login` reachable in a browser,
+- [ ] `https://dashboard.example.com/login` reachable in a browser,
       shows the brand logo + "Sign in with Discord" button.
 - [ ] Click sign-in → Discord OAuth consent screen for **identify guilds** scopes
       (no `bot` / `applications.commands` here — the bot's invite is separate).

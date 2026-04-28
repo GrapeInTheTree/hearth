@@ -60,7 +60,7 @@ The result is a stack that feels like MEE6 to end users but reads like infrastru
 
 ## Status
 
-**Phase 2 (Web Dashboard MVP) — shipped.** End-to-end ticket lifecycle (open / claim / close / reopen / delete) verified on a live Discord server. Operator dashboard live at the operator's chosen subdomain (`bot-dashboard.fanx.xyz` for the FanX deployment). Race-safe concurrency via Postgres advisory locks plus a partial unique index. Multi-type panels with operator-driven slash CRUD and a Next.js 15 web UI.
+**Phase 2 (Web Dashboard MVP) — shipped.** End-to-end ticket lifecycle (open / claim / close / reopen / delete) verified on a live Discord server. Operator dashboard runs at the operator's chosen subdomain. Race-safe concurrency via Postgres advisory locks plus a partial unique index. Multi-type panels with operator-driven slash CRUD and a Next.js 15 web UI.
 
 | Metric                                                    | Value                                                          |
 | --------------------------------------------------------- | -------------------------------------------------------------- |
@@ -190,7 +190,7 @@ hearth/
 ├── infra/
 │   ├── docker-compose.yml                # bot + dashboard + postgres
 │   ├── deploy.sh                         # VM-side: pull + token check + build + up + logs
-│   └── nginx/bot-dashboard.fanx.xyz.conf.example
+│   └── nginx/dashboard.conf.example
 ├── docs/runbook/
 │   ├── 02-dashboard-deploy.md            # Full deploy runbook
 │   └── 03-pre-deploy-checklist.md        # Gate-by-gate operator checklist
@@ -437,11 +437,11 @@ cp apps/bot/.env.example apps/bot/.env
 cp apps/dashboard/.env.example apps/dashboard/.env
 # Fill in real values. INTERNAL_API_TOKEN must be identical in both.
 
-sudo cp infra/nginx/bot-dashboard.fanx.xyz.conf.example \
-        /etc/nginx/sites-available/bot-dashboard.fanx.xyz
-sudo $EDITOR /etc/nginx/sites-available/bot-dashboard.fanx.xyz   # set server_name
-sudo ln -s /etc/nginx/sites-available/bot-dashboard.fanx.xyz /etc/nginx/sites-enabled/
-sudo certbot --nginx -d bot-dashboard.fanx.xyz
+sudo cp infra/nginx/dashboard.conf.example \
+        /etc/nginx/sites-available/dashboard.example.com
+sudo $EDITOR /etc/nginx/sites-available/dashboard.example.com   # set server_name
+sudo ln -s /etc/nginx/sites-available/dashboard.example.com /etc/nginx/sites-enabled/
+sudo certbot --nginx -d dashboard.example.com
 ```
 
 ### First boot

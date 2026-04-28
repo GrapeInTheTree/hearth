@@ -1,19 +1,18 @@
 # Dashboard deploy runbook
 
-Single-VM deploy for the bot + dashboard + postgres stack. Mirrors the
-existing chiliz-api.fanx.xyz pattern: nginx + certbot terminate TLS on
-the host, Docker Compose runs the workload behind it, and every service
-binds to localhost only.
+Single-VM deploy for the bot + dashboard + postgres stack. Standard
+pattern: nginx + certbot terminate TLS on the host, Docker Compose runs
+the workload behind it, and every service binds to localhost only.
 
 ## Prerequisites on the VM
 
 - Docker + Docker Compose v2 (`docker compose version` >= 2.20)
 - Nginx + certbot (the operator's existing setup)
 - This repo cloned to a stable path (e.g. `/opt/hearth`)
-- A subdomain pointing at the VM's external IP (e.g. `bot-dashboard.fanx.xyz`)
+- A subdomain pointing at the VM's external IP (e.g. `dashboard.example.com`)
 - A Discord application with two redirect URIs allowlisted:
   - `http://localhost:3200/api/auth/callback/discord` (dev)
-  - `https://bot-dashboard.fanx.xyz/api/auth/callback/discord` (prod)
+  - `https://dashboard.example.com/api/auth/callback/discord` (prod)
 
 ## One-time setup
 
@@ -59,12 +58,12 @@ The bot owns `DISCORD_TOKEN`/`DISCORD_APP_ID`; the dashboard owns
 ### 4. nginx site config
 
 ```bash
-sudo cp infra/nginx/bot-dashboard.fanx.xyz.conf.example \
-        /etc/nginx/sites-available/bot-dashboard.fanx.xyz
-sudo $EDITOR /etc/nginx/sites-available/bot-dashboard.fanx.xyz   # adjust server_name
-sudo ln -s /etc/nginx/sites-available/bot-dashboard.fanx.xyz \
+sudo cp infra/nginx/dashboard.conf.example \
+        /etc/nginx/sites-available/dashboard.example.com
+sudo $EDITOR /etc/nginx/sites-available/dashboard.example.com   # adjust server_name
+sudo ln -s /etc/nginx/sites-available/dashboard.example.com \
            /etc/nginx/sites-enabled/
-sudo certbot --nginx -d bot-dashboard.fanx.xyz
+sudo certbot --nginx -d dashboard.example.com
 sudo nginx -t && sudo systemctl reload nginx
 ```
 

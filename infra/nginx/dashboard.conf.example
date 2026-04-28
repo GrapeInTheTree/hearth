@@ -1,18 +1,19 @@
-# Example nginx site config for the dashboard. Copy to
-# /etc/nginx/sites-available/bot-dashboard.fanx.xyz, replace the host name
-# with yours, then `sudo certbot --nginx -d bot-dashboard.fanx.xyz` to
-# install the TLS cert. Reload with `sudo systemctl reload nginx`.
+# Example nginx site config for the Hearth dashboard. Copy to
+# /etc/nginx/sites-available/<your-domain>, swap `dashboard.example.com`
+# below for your actual subdomain, then run
+# `sudo certbot --nginx -d <your-domain>` to install the TLS cert.
+# Reload with `sudo systemctl reload nginx`.
 #
-# This file lives in infra/ as documentation. Do not deploy by symlinking
-# from sites-enabled/ — copy and edit per host.
+# This file lives in infra/ as documentation. Do not deploy by
+# symlinking from sites-enabled/ — copy and edit per host.
 
 server {
   listen 443 ssl http2;
-  server_name bot-dashboard.fanx.xyz;
+  server_name dashboard.example.com;
 
   # certbot manages these — adjust to your cert location.
-  ssl_certificate     /etc/letsencrypt/live/bot-dashboard.fanx.xyz/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/bot-dashboard.fanx.xyz/privkey.pem;
+  ssl_certificate     /etc/letsencrypt/live/dashboard.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/dashboard.example.com/privkey.pem;
 
   # The Next.js standalone server doesn't accept large payloads — settings
   # forms are tiny. 2 MB stops accidental file uploads at the proxy.
@@ -42,6 +43,6 @@ server {
 # HTTP since cookies are Secure-flagged.
 server {
   listen 80;
-  server_name bot-dashboard.fanx.xyz;
+  server_name dashboard.example.com;
   return 301 https://$host$request_uri;
 }
