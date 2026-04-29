@@ -15,9 +15,7 @@ import {
 import type { Branding } from './branding.js';
 import type { GuildConfigService } from './guildConfigService.js';
 import { format, tickets as i18nTickets } from './i18n/index.js';
-import { withAdvisoryLock } from './lib/advisoryLock.js';
 import { formatChannelName } from './lib/format.js';
-import { ticketOpenLockKey } from './lib/lockKeys.js';
 import { hasManageGuild, isSupportStaff } from './lib/permissions.js';
 import { buildWelcomeMessage } from './lib/welcomeBuilder.js';
 import type { PanelService } from './panelService.js';
@@ -25,9 +23,8 @@ import type { DiscordGateway, ModlogEmbed } from './ports/discordGateway.js';
 
 // Soft cap: Discord categories hold up to 50 channels. We refuse new tickets
 // at 48 to leave headroom for two concurrent racers between the count and the
-// create. Lock acquisition is fast enough that we don't recheck inside.
+// create.
 const CATEGORY_CHILD_SOFT_CAP = 48;
-const ADVISORY_LOCK_TIMEOUT_MS = 5_000;
 
 export interface OpenTicketInput {
   readonly guildId: string;
@@ -89,71 +86,86 @@ export class TicketService {
       return err(new ConflictError(i18nTickets.errors.categoryFull));
     }
 
-    const lockKey = ticketOpenLockKey(input.guildId, input.openerId, type.id);
+    // Best-effort pre-flight: cheap "already open?" check so a duplicate
+    // click never even creates a Discord channel. The race between this
+    // SELECT and the INSERT below is closed by the partial unique index
+    // `ticket_open_dedupe (guildId, openerId, panelTypeId) WHERE status IN
+    // ('open', 'claimed')` — concurrent INSERTs collide on P2002 and we
+    // map that to ConflictError + clean up the orphan channel.
+    const existing = await this.db.ticket.findFirst({
+      where: {
+        guildId: input.guildId,
+        openerId: input.openerId,
+        panelTypeId: type.id,
+        status: { in: [TicketStatus.open, TicketStatus.claimed] },
+      },
+    });
+    if (existing !== null) {
+      return err(new ConflictError(i18nTickets.errors.alreadyOpen));
+    }
 
-    // Take the lock, do the create. Channel creation lives inside the lock
-    // so a racer can't slip past us between SELECT and INSERT.
-    let ticket: Ticket;
-    let createdChannelId: string | undefined;
+    // Reserve a ticket number outside any transaction. The counter is
+    // monotonic (atomic increment in GuildConfigService); a number can
+    // burn unused if subsequent steps fail, which is acceptable.
+    const number = await this.guildConfig.incrementTicketCounter(this.db, input.guildId);
+    const channelName = formatChannelName(number, input.openerUsername, input.openerId);
+
+    // Create the Discord channel before the DB write. Holding a Postgres
+    // transaction open across a Discord REST call (1-5s p95) caused
+    // Prisma 7's interactive-transaction tracking to drop the
+    // transaction id and raise P2028 ("Transaction not found") under VM
+    // latency conditions. Doing the slow side-effect first means the DB
+    // write becomes a tiny, in-memory-fast nested create — no
+    // long-lived transactions, no advisory lock needed.
+    let createdChannelId: string;
     try {
-      ticket = await withAdvisoryLock(
-        this.db,
-        { key: lockKey, timeoutMs: ADVISORY_LOCK_TIMEOUT_MS },
-        async (tx) => {
-          const existing = await tx.ticket.findFirst({
-            where: {
-              guildId: input.guildId,
-              openerId: input.openerId,
-              panelTypeId: type.id,
-              status: { in: [TicketStatus.open, TicketStatus.claimed] },
-            },
-          });
-          if (existing !== null) {
-            throw new ConflictError(i18nTickets.errors.alreadyOpen);
-          }
-
-          const number = await this.guildConfig.incrementTicketCounter(tx, input.guildId);
-          const channelName = formatChannelName(number, input.openerUsername, input.openerId);
-
-          const { channelId } = await this.gateway.createTicketChannel({
-            guildId: input.guildId,
-            parentId: type.activeCategoryId,
-            name: channelName,
-            topic: `Ticket #${String(number)} • opened by <@${input.openerId}>`,
-            openerId: input.openerId,
-            supportRoleIds: type.supportRoleIds,
-          });
-          createdChannelId = channelId;
-
-          const created = await tx.ticket.create({
-            data: {
-              guildId: input.guildId,
-              panelId: input.panelId,
-              panelTypeId: type.id,
-              channelId,
-              number,
-              openerId: input.openerId,
-              status: TicketStatus.open,
-            },
-          });
-          await tx.ticketEvent.create({
-            data: {
-              ticketId: created.id,
-              type: 'opened',
-              actorId: input.openerId,
-              metadata: { channelId, number },
-            },
-          });
-          return created;
-        },
-      );
+      const result = await this.gateway.createTicketChannel({
+        guildId: input.guildId,
+        parentId: type.activeCategoryId,
+        name: channelName,
+        topic: `Ticket #${String(number)} • opened by <@${input.openerId}>`,
+        openerId: input.openerId,
+        supportRoleIds: type.supportRoleIds,
+      });
+      createdChannelId = result.channelId;
     } catch (e) {
-      // Clean up the orphan channel if the row create failed mid-flight.
-      if (createdChannelId !== undefined) {
-        await this.gateway
-          .deleteChannel(createdChannelId, 'ticket open rolled back')
-          .catch(() => undefined);
-      }
+      if (e instanceof DiscordApiError) return err(e);
+      throw e;
+    }
+
+    // Tight transaction over just the two DB writes. No external calls
+    // inside, so no timeout / transaction-tracking risk. The partial
+    // unique index `ticket_open_dedupe` enforces dedupe — if a racer
+    // slipped in between our SELECT above and this INSERT, Prisma
+    // raises P2002 and we map it to ConflictError.
+    let ticket: Ticket;
+    try {
+      ticket = await this.db.$transaction(async (tx) => {
+        const created = await tx.ticket.create({
+          data: {
+            guildId: input.guildId,
+            panelId: input.panelId,
+            panelTypeId: type.id,
+            channelId: createdChannelId,
+            number,
+            openerId: input.openerId,
+            status: TicketStatus.open,
+          },
+        });
+        await tx.ticketEvent.create({
+          data: {
+            ticketId: created.id,
+            type: 'opened',
+            actorId: input.openerId,
+            metadata: { channelId: createdChannelId, number },
+          },
+        });
+        return created;
+      });
+    } catch (e) {
+      await this.gateway
+        .deleteChannel(createdChannelId, 'ticket open rolled back')
+        .catch(() => undefined);
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         return err(new ConflictError(i18nTickets.errors.alreadyOpen, e));
       }
