@@ -24,14 +24,19 @@ COPY packages/tsconfig/package.json ./packages/tsconfig/
 
 # Install all deps (incl. dev). --ignore-scripts skips:
 #  - root `prepare` (lefthook install) — needs git which alpine lacks;
-#  - Prisma's postinstall — we run `prisma generate` explicitly below.
+#  - Prisma's postinstall — leftover from the migration window. PR-6
+#    drops Prisma from package.json entirely.
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy sources
 COPY . .
 
-# Build chain: generate Prisma client -> build packages -> build bot
+# Build chain: shared types first, then DB package (Drizzle schema +
+# migrate entry), then tickets-core (services), then the bot bundle.
+# The `db:generate` step (Prisma client) is still here because Prisma
+# is in package.json until PR-6; it's a build-only artifact never
+# loaded at runtime.
 RUN pnpm --filter @hearth/database run db:generate && \
     pnpm --filter @hearth/shared run build && \
     pnpm --filter @hearth/database run build && \
@@ -53,29 +58,24 @@ WORKDIR /app
 # tini for proper signal handling. wget is in busybox already (HEALTHCHECK uses it).
 RUN apk add --no-cache tini
 
-# pnpm is needed at runtime to invoke `prisma migrate deploy` from the
-# entrypoint. Installing via corepack keeps the version pinned to the
-# build-time toolchain.
-ARG PNPM_VERSION
-RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
-
-# --chown ensures the `node` user can write to the prisma engines cache
-# directory (the migrate CLI lazily downloads/extracts engine binaries
-# even on the no-Rust-engine v7 — it's the migration engine specifically).
-COPY --from=builder --chown=node:node /out/dist ./dist
-COPY --from=builder --chown=node:node /out/node_modules ./node_modules
-COPY --from=builder --chown=node:node /out/package.json ./package.json
-COPY --from=builder --chown=node:node /repo/packages/database ./packages/database
+COPY --from=builder /out/dist ./dist
+COPY --from=builder /out/node_modules ./node_modules
+COPY --from=builder /out/package.json ./package.json
+# Migration SQL files. The bot's `runMigrations()` reads from this
+# folder relative to its own dist location at boot, so they have to
+# ship into the runtime stage.
+COPY --from=builder /repo/packages/database/dist ./node_modules/@hearth/database/dist
+COPY --from=builder /repo/packages/database/drizzle ./node_modules/@hearth/database/drizzle
 
 ENV NODE_ENV=production
 USER node
 EXPOSE 3000
 
-# Migrate the schema then start. If migrations fail we fail loudly via `set
-# -e` rather than silently boot against a stale DB. dumb-init/tini relays
-# SIGTERM to node which already handles graceful shutdown.
-ENTRYPOINT ["/sbin/tini", "--", "/bin/sh", "-c"]
-CMD ["set -e; pnpm --silent --prefix packages/database exec prisma migrate deploy; exec node dist/index.js"]
+# Bot calls runMigrations() before opening the Discord gateway — see
+# apps/bot/src/index.ts. Failure exits 1 so the operator's
+# `restart: unless-stopped` policy surfaces it. tini relays SIGTERM
+# to node which handles graceful shutdown.
+ENTRYPOINT ["/sbin/tini", "--", "node", "dist/index.js"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --quiet --spider http://localhost:3000/healthz || exit 1
