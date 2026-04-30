@@ -1,4 +1,4 @@
-import { db, type DbClient } from '@hearth/database';
+import { dbDrizzle, type DbDrizzle } from '@hearth/database';
 import {
   GuildConfigService,
   PanelService,
@@ -20,7 +20,7 @@ declare module '@sapphire/pieces' {
   interface Container {
     env: Env;
     branding: Branding;
-    db: DbClient;
+    db: DbDrizzle;
     /**
      * The DiscordGateway is wired in apps/bot/src/index.ts after the
      * SapphireClient is constructed (it needs the live Client). Until then
@@ -33,7 +33,7 @@ declare module '@sapphire/pieces' {
 
 container.env = env;
 container.branding = branding;
-container.db = db;
+container.db = dbDrizzle;
 
 /**
  * Wire DiscordGateway-dependent services. Called from index.ts after the
@@ -44,8 +44,8 @@ container.db = db;
  */
 export function attachServices(gateway: DiscordGateway): void {
   container.gateway = gateway;
-  const guildConfig = new GuildConfigService(db);
-  const panel = new PanelService(db, gateway, branding);
-  const ticket = new TicketService(db, gateway, branding, guildConfig, panel);
+  const guildConfig = new GuildConfigService(dbDrizzle);
+  const panel = new PanelService(dbDrizzle, gateway, branding);
+  const ticket = new TicketService(dbDrizzle, gateway, branding, guildConfig, panel);
   container.services = { guildConfig, panel, ticket };
 }

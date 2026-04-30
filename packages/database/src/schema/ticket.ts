@@ -1,3 +1,4 @@
+import cuid from 'cuid';
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
@@ -19,7 +20,9 @@ import { ticketEvent } from './ticketEvent.js';
 export const ticket = pgTable(
   'Ticket',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => cuid()),
     guildId: text('guildId').notNull(),
     panelId: text('panelId')
       .notNull()

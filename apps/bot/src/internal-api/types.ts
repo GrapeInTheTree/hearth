@@ -1,4 +1,4 @@
-import type { DbClient } from '@hearth/database';
+import type { DbDrizzle } from '@hearth/database';
 import type { PanelService } from '@hearth/tickets-core';
 import type { Client } from 'discord.js';
 
@@ -12,7 +12,7 @@ import type { Branding } from '../config/branding.js';
  */
 export interface InternalApiContext {
   readonly client: Client;
-  readonly db: DbClient;
+  readonly db: DbDrizzle;
   readonly panel: PanelService;
   readonly branding: Branding;
   /** Returns true when the bot's gateway connection is OPEN (used by /healthz). */

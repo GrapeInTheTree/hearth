@@ -1,16 +1,14 @@
-import type { TicketStatus } from '@hearth/database';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { count, eq, schema } from '@hearth/database';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   type AddTicketTypeInput,
   PanelService,
   type UpsertPanelInput,
 } from '../../../src/panelService.js';
-import { createFakeDb, type FakeDb } from '../../helpers/fakeDb.js';
 import { FakeDiscordGateway } from '../../helpers/fakeGateway.js';
 import { branding } from '../../helpers/testBranding.js';
-
-type TicketRowStatus = TicketStatus;
+import { createTestDb, type TestDb } from '../../helpers/testDb.js';
 
 const baseUpsert: UpsertPanelInput = {
   guildId: 'g1',
@@ -37,15 +35,27 @@ function typeInput(
   };
 }
 
+async function countRows(
+  testDb: TestDb,
+  table: typeof schema.panel | typeof schema.panelTicketType | typeof schema.ticket,
+): Promise<number> {
+  const [row] = await testDb.db.select({ value: count() }).from(table);
+  return row?.value ?? 0;
+}
+
 describe('PanelService.upsertPanel', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let gateway: FakeDiscordGateway;
   let service: PanelService;
 
-  beforeEach(() => {
-    db = createFakeDb();
+  beforeEach(async () => {
+    testDb = await createTestDb();
     gateway = new FakeDiscordGateway();
-    service = new PanelService(db, gateway, branding);
+    service = new PanelService(testDb.db, gateway, branding);
+  });
+
+  afterEach(async () => {
+    await testDb.close();
   });
 
   it('inserts a new panel with no ticket types and sends panel message', async () => {
@@ -53,8 +63,8 @@ describe('PanelService.upsertPanel', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.created).toBe(true);
-    expect(db.tables.panel).toHaveLength(1);
-    expect(db.tables.panelTicketType).toHaveLength(0);
+    expect(await countRows(testDb, schema.panel)).toBe(1);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(0);
     expect(gateway.callsOf('sendPanelMessage')).toHaveLength(1);
     expect(gateway.callsOf('editPanelMessage')).toHaveLength(0);
   });
@@ -73,27 +83,32 @@ describe('PanelService.upsertPanel', () => {
     expect(second.ok).toBe(true);
     if (!second.ok) return;
     expect(second.value.created).toBe(false);
-    expect(db.tables.panel).toHaveLength(1);
-    expect(db.tables.panel[0]?.embedTitle).toBe('New Title');
+    expect(await countRows(testDb, schema.panel)).toBe(1);
+    const [row] = await testDb.db.select().from(schema.panel).limit(1);
+    expect(row?.embedTitle).toBe('New Title');
     expect(gateway.callsOf('sendPanelMessage')).toHaveLength(1);
     expect(gateway.callsOf('editPanelMessage')).toHaveLength(1);
   });
 });
 
 describe('PanelService.addTicketType', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let gateway: FakeDiscordGateway;
   let service: PanelService;
   let panelId: string;
 
   beforeEach(async () => {
-    db = createFakeDb();
+    testDb = await createTestDb();
     gateway = new FakeDiscordGateway();
-    service = new PanelService(db, gateway, branding);
+    service = new PanelService(testDb.db, gateway, branding);
     const upserted = await service.upsertPanel(baseUpsert);
     if (!upserted.ok) throw new Error('seed failed');
     panelId = upserted.value.panel.id;
     gateway.reset();
+  });
+
+  afterEach(async () => {
+    await testDb.close();
   });
 
   it('inserts a new type and re-renders the panel', async () => {
@@ -101,7 +116,7 @@ describe('PanelService.addTicketType', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.name).toBe('question');
-    expect(db.tables.panelTicketType).toHaveLength(1);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(1);
     expect(gateway.callsOf('editPanelMessage')).toHaveLength(1);
   });
 
@@ -110,7 +125,7 @@ describe('PanelService.addTicketType', () => {
     const dup = await service.addTicketType(typeInput(panelId, 'question'));
     expect(dup.ok).toBe(false);
     if (!dup.ok) expect(dup.error.code).toBe('CONFLICT');
-    expect(db.tables.panelTicketType).toHaveLength(1);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(1);
   });
 
   it('rejects unknown panelId', async () => {
@@ -123,27 +138,31 @@ describe('PanelService.addTicketType', () => {
     const a = await service.addTicketType(typeInput(panelId, 'question'));
     const b = await service.addTicketType(typeInput(panelId, 'business-offer'));
     expect(a.ok && b.ok).toBe(true);
-    expect(db.tables.panelTicketType).toHaveLength(2);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(2);
     // Two re-renders, one per addition.
     expect(gateway.callsOf('editPanelMessage')).toHaveLength(2);
   });
 });
 
 describe('PanelService.editTicketType', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let gateway: FakeDiscordGateway;
   let service: PanelService;
   let panelId: string;
 
   beforeEach(async () => {
-    db = createFakeDb();
+    testDb = await createTestDb();
     gateway = new FakeDiscordGateway();
-    service = new PanelService(db, gateway, branding);
+    service = new PanelService(testDb.db, gateway, branding);
     const upserted = await service.upsertPanel(baseUpsert);
     if (!upserted.ok) throw new Error('seed failed');
     panelId = upserted.value.panel.id;
     await service.addTicketType(typeInput(panelId, 'question'));
     gateway.reset();
+  });
+
+  afterEach(async () => {
+    await testDb.close();
   });
 
   it('updates label without touching other fields', async () => {
@@ -175,27 +194,35 @@ describe('PanelService.editTicketType', () => {
       name: 'question',
       welcomeMessage: 'Custom copy',
     });
-    expect(db.tables.panelTicketType[0]?.welcomeMessage).toBe('Custom copy');
+    const [afterSet] = await testDb.db
+      .select({ welcomeMessage: schema.panelTicketType.welcomeMessage })
+      .from(schema.panelTicketType)
+      .limit(1);
+    expect(afterSet?.welcomeMessage).toBe('Custom copy');
     await service.editTicketType({
       panelId,
       name: 'question',
       welcomeMessage: null,
     });
-    expect(db.tables.panelTicketType[0]?.welcomeMessage).toBeNull();
+    const [afterClear] = await testDb.db
+      .select({ welcomeMessage: schema.panelTicketType.welcomeMessage })
+      .from(schema.panelTicketType)
+      .limit(1);
+    expect(afterClear?.welcomeMessage).toBeNull();
   });
 });
 
 describe('PanelService.removeTicketType', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let gateway: FakeDiscordGateway;
   let service: PanelService;
   let panelId: string;
   let typeId: string;
 
   beforeEach(async () => {
-    db = createFakeDb();
+    testDb = await createTestDb();
     gateway = new FakeDiscordGateway();
-    service = new PanelService(db, gateway, branding);
+    service = new PanelService(testDb.db, gateway, branding);
     const upserted = await service.upsertPanel(baseUpsert);
     if (!upserted.ok) throw new Error('seed failed');
     panelId = upserted.value.panel.id;
@@ -205,38 +232,34 @@ describe('PanelService.removeTicketType', () => {
     gateway.reset();
   });
 
+  afterEach(async () => {
+    await testDb.close();
+  });
+
   it('removes a type with no tickets', async () => {
     const result = await service.removeTicketType(panelId, 'question');
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.removedId).toBe(typeId);
-    expect(db.tables.panelTicketType).toHaveLength(0);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(0);
     expect(gateway.callsOf('editPanelMessage')).toHaveLength(1);
   });
 
   it('refuses to remove a type with referencing tickets', async () => {
-    db.tables.ticket.push({
-      id: 't1',
+    await testDb.db.insert(schema.ticket).values({
       guildId: 'g1',
       panelId,
       panelTypeId: typeId,
       channelId: 'chan-1',
-      welcomeMessageId: null,
       number: 1,
       openerId: 'u1',
-      claimedById: null,
-      status: 'open' as unknown as TicketRowStatus,
-      openedAt: new Date(),
-      claimedAt: null,
-      closedAt: null,
-      closedById: null,
-      closeReason: null,
+      status: 'open',
     });
 
     const result = await service.removeTicketType(panelId, 'question');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('CONFLICT');
-    expect(db.tables.panelTicketType).toHaveLength(1);
+    expect(await countRows(testDb, schema.panelTicketType)).toBe(1);
   });
 
   it('returns NotFoundError on unknown name', async () => {
@@ -247,22 +270,26 @@ describe('PanelService.removeTicketType', () => {
 });
 
 describe('PanelService.getPanelTypeForOpen', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let gateway: FakeDiscordGateway;
   let service: PanelService;
   let panelId: string;
   let typeId: string;
 
   beforeEach(async () => {
-    db = createFakeDb();
+    testDb = await createTestDb();
     gateway = new FakeDiscordGateway();
-    service = new PanelService(db, gateway, branding);
+    service = new PanelService(testDb.db, gateway, branding);
     const upserted = await service.upsertPanel(baseUpsert);
     if (!upserted.ok) throw new Error('seed failed');
     panelId = upserted.value.panel.id;
     const added = await service.addTicketType(typeInput(panelId, 'question'));
     if (!added.ok) throw new Error('seed failed');
     typeId = added.value.id;
+  });
+
+  afterEach(async () => {
+    await testDb.close();
   });
 
   it('returns panel + type when both exist', async () => {
@@ -281,3 +308,8 @@ describe('PanelService.getPanelTypeForOpen', () => {
     expect(got.ok).toBe(false);
   });
 });
+
+// Suppress unused — eq is imported for consistency with other test files
+// that perform select-with-where assertions. Keep it imported so future
+// tests in this file don't need to add it back.
+void eq;

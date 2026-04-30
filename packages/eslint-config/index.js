@@ -151,6 +151,11 @@ export default tseslint.config(
     rules: {
       'no-restricted-syntax': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      // Tests routinely assert "this row exists right after we wrote it"
+      // which Drizzle types as `Row | undefined` (returning() on insert).
+      // Using `!` keeps assertion code readable; production code still
+      // bans non-null assertions.
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
 
@@ -171,9 +176,11 @@ export default tseslint.config(
     },
   },
 
-  // Database bootstrap legitimately reads NODE_ENV for Prisma log mode
+  // Database bootstrap legitimately reads NODE_ENV for log mode + lazy
+  // singleton caching (HMR safety). Both Prisma (legacy) and Drizzle
+  // clients use the same pattern; this exemption covers both files.
   {
-    files: ['**/packages/database/src/client.ts'],
+    files: ['**/packages/database/src/client.ts', '**/packages/database/src/client.drizzle.ts'],
     rules: {
       'no-restricted-syntax': 'off',
       '@typescript-eslint/dot-notation': 'off',

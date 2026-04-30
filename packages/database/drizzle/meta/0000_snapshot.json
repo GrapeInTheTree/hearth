@@ -1,5 +1,5 @@
 {
-  "id": "8ee2b997-895c-4aa0-aa1e-9f7005e6f651",
+  "id": "a835b78d-37f9-470d-8078-cbfeb9d8946c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -230,13 +230,13 @@
           "name": "supportRoleIds",
           "type": "text[]",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "pingRoleIds": {
           "name": "pingRoleIds",
           "type": "text[]",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "perUserLimit": {
           "name": "perUserLimit",

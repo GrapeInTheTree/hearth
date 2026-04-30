@@ -1,6 +1,6 @@
 import '@sapphire/plugin-logger/register';
 
-import { db } from '@hearth/database';
+import { dbDrizzle } from '@hearth/database';
 import { container as diContainer } from '@sapphire/framework';
 import {
   ApplicationCommandRegistries,
@@ -62,11 +62,11 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
       } catch (err) {
         client.logger.error('Error while destroying Discord client', err);
       }
-      try {
-        await diContainer.db.$disconnect();
-      } catch (err) {
-        client.logger.error('Error while disconnecting Prisma client', err);
-      }
+      // Drizzle's NodePgDatabase has no top-level disconnect — the pg.Pool
+      // owns the sockets and exits with the process. Bot is short-lived
+      // for SIGINT/SIGTERM, so we let the OS reap connections; if we ever
+      // need an explicit close (e.g. for Cloud Run cold-start), expose
+      // the Pool from `client.drizzle.ts` and call `pool.end()` here.
       process.exit(0);
     })();
   });
@@ -79,7 +79,7 @@ try {
     token: env.INTERNAL_API_TOKEN,
     context: {
       client,
-      db,
+      db: dbDrizzle,
       panel: diContainer.services.panel,
       branding,
       isReady: () => client.isReady(),

@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 const RUN_INTEGRATION = process.env['RUN_INTEGRATION'] === '1';
 
 // Single config, two execution modes:
-// - default: unit only (fakeDb + fakeGateway), runs in <1s.
+// - default: unit only (FakeDiscordGateway, no DB connection), runs in <1s.
 // - RUN_INTEGRATION=1: includes tests/integration/* (testcontainers pg 16),
 //   default `test` script keeps fast feedback.
 //

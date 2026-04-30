@@ -1,3 +1,4 @@
+import cuid from 'cuid';
 import { relations } from 'drizzle-orm';
 import { index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
@@ -11,7 +12,12 @@ import { ticket } from './ticket.js';
 export const panel = pgTable(
   'Panel',
   {
-    id: text('id').primaryKey(),
+    // Application-side cuid v1, matching the existing prod IDs from Prisma's
+    // `@default(cuid())`. PR-8 swaps this for `@paralleldrive/cuid2` (still
+    // application-side, only the generator function changes).
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => cuid()),
     guildId: text('guildId').notNull(),
     channelId: text('channelId').notNull(),
     messageId: text('messageId').notNull(),
@@ -19,7 +25,11 @@ export const panel = pgTable(
     embedDescription: text('embedDescription').notNull(),
     embedColor: text('embedColor'),
     createdAt: timestamp('createdAt', { precision: 3, mode: 'date' }).notNull().defaultNow(),
-    updatedAt: timestamp('updatedAt', { precision: 3, mode: 'date' }).notNull(),
+    // Set on every write (insert + update) to mirror Prisma's @updatedAt.
+    updatedAt: timestamp('updatedAt', { precision: 3, mode: 'date' })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     index('Panel_guildId_idx').on(t.guildId),

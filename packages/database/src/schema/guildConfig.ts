@@ -11,8 +11,10 @@ export const guildConfig = pgTable('GuildConfig', {
   ticketCounter: integer('ticketCounter').notNull().default(0),
   defaultLocale: text('defaultLocale').notNull().default('en'),
   createdAt: timestamp('createdAt', { precision: 3, mode: 'date' }).notNull().defaultNow(),
-  // Prisma's `@updatedAt` is application-side — Postgres has no DEFAULT here.
-  // Drizzle services must set it explicitly on every write (PR-2a wires
-  // `$defaultFn` and `$onUpdate`).
-  updatedAt: timestamp('updatedAt', { precision: 3, mode: 'date' }).notNull(),
+  // Set on every write to mirror Prisma's @updatedAt — application-side,
+  // no Postgres DEFAULT (matches the existing prod migration).
+  updatedAt: timestamp('updatedAt', { precision: 3, mode: 'date' })
+    .notNull()
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date()),
 });

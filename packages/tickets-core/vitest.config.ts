@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
-// Unit tests only — services + lib + helpers using FakeDb + FakeGateway.
-// Integration tests (testcontainers pg 16) live in apps/bot/tests/integration
-// and import services from this package via @hearth/tickets-core.
+// Unit tests — services + lib. Service tests run against PGlite (Postgres
+// compiled to WASM) for real DB semantics; gateway calls are stubbed via
+// FakeDiscordGateway. Apps/bot/tests/integration uses testcontainers
+// Postgres 16 for production-equivalent verification of bot wiring.
 //
 // Coverage thresholds match apps/bot (85/75/85/85). Excludes generated entry
 // points, the i18n bundle (data, no logic), and ports (interface declarations).
@@ -12,7 +13,9 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/unit/**/*.test.ts', 'src/**/*.test.ts'],
     setupFiles: ['./tests/setup.ts'],
-    testTimeout: 5_000,
+    // PGlite cold-starts ~30ms per test setup; the partial-unique race
+    // test runs concurrent tx work. 15s is generous safety ceiling.
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],

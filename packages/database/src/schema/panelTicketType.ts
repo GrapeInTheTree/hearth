@@ -1,3 +1,4 @@
+import cuid from 'cuid';
 import { relations } from 'drizzle-orm';
 import { index, integer, pgTable, text } from 'drizzle-orm/pg-core';
 
@@ -15,7 +16,9 @@ import { ticket } from './ticket.js';
 export const panelTicketType = pgTable(
   'PanelTicketType',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => cuid()),
     panelId: text('panelId')
       .notNull()
       .references(() => panel.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
@@ -25,8 +28,14 @@ export const panelTicketType = pgTable(
     buttonLabel: text('buttonLabel'),
     buttonOrder: integer('buttonOrder').notNull().default(0),
     activeCategoryId: text('activeCategoryId').notNull(),
-    supportRoleIds: text('supportRoleIds').array(),
-    pingRoleIds: text('pingRoleIds').array(),
+    // Prisma's `String[]` column was nullable at the Postgres level (the
+    // generator doesn't emit NOT NULL for arrays) but the application has
+    // always written arrays, never null. The Drizzle schema enforces the
+    // real invariant — TEXT[] NOT NULL — so the inferred row type is
+    // `string[]` without nulls. Existing prod rows have no NULL values,
+    // so PR-4 baseline migration's `SET NOT NULL` ALTER applies cleanly.
+    supportRoleIds: text('supportRoleIds').array().notNull(),
+    pingRoleIds: text('pingRoleIds').array().notNull(),
     perUserLimit: integer('perUserLimit'),
     welcomeMessage: text('welcomeMessage'),
   },

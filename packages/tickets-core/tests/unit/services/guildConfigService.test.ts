@@ -1,16 +1,21 @@
+import { schema } from '@hearth/database';
 import { ValidationError } from '@hearth/shared';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { GuildConfigService } from '../../../src/guildConfigService.js';
-import { createFakeDb, type FakeDb } from '../../helpers/fakeDb.js';
+import { createTestDb, type TestDb } from '../../helpers/testDb.js';
 
 describe('GuildConfigService', () => {
-  let db: FakeDb;
+  let testDb: TestDb;
   let service: GuildConfigService;
 
-  beforeEach(() => {
-    db = createFakeDb();
-    service = new GuildConfigService(db);
+  beforeEach(async () => {
+    testDb = await createTestDb();
+    service = new GuildConfigService(testDb.db);
+  });
+
+  afterEach(async () => {
+    await testDb.close();
   });
 
   it('getOrCreate returns existing row idempotently', async () => {
@@ -18,7 +23,8 @@ describe('GuildConfigService', () => {
     const b = await service.getOrCreate('g1');
     expect(a.guildId).toBe('g1');
     expect(b.guildId).toBe('g1');
-    expect(db.tables.guildConfig.size).toBe(1);
+    const rows = await testDb.db.select().from(schema.guildConfig);
+    expect(rows).toHaveLength(1);
   });
 
   it('setArchiveCategory rejects invalid snowflake', async () => {
@@ -47,17 +53,14 @@ describe('GuildConfigService', () => {
   });
 
   it('incrementTicketCounter increments atomically', async () => {
-    // Direct call (no $transaction wrapper needed for fake)
-    const tx = db as unknown as Parameters<typeof service.incrementTicketCounter>[0];
-    expect(await service.incrementTicketCounter(tx, 'g1')).toBe(1);
-    expect(await service.incrementTicketCounter(tx, 'g1')).toBe(2);
-    expect(await service.incrementTicketCounter(tx, 'g1')).toBe(3);
+    expect(await service.incrementTicketCounter(testDb.db, 'g1')).toBe(1);
+    expect(await service.incrementTicketCounter(testDb.db, 'g1')).toBe(2);
+    expect(await service.incrementTicketCounter(testDb.db, 'g1')).toBe(3);
   });
 
   it('incrementTicketCounter is per-guild', async () => {
-    const tx = db as unknown as Parameters<typeof service.incrementTicketCounter>[0];
-    expect(await service.incrementTicketCounter(tx, 'g1')).toBe(1);
-    expect(await service.incrementTicketCounter(tx, 'g2')).toBe(1);
-    expect(await service.incrementTicketCounter(tx, 'g1')).toBe(2);
+    expect(await service.incrementTicketCounter(testDb.db, 'g1')).toBe(1);
+    expect(await service.incrementTicketCounter(testDb.db, 'g2')).toBe(1);
+    expect(await service.incrementTicketCounter(testDb.db, 'g1')).toBe(2);
   });
 });

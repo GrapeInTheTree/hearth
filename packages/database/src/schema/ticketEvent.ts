@@ -1,3 +1,4 @@
+import cuid from 'cuid';
 import { relations } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
@@ -14,13 +15,15 @@ import { ticket } from './ticket.js';
 export const ticketEvent = pgTable(
   'TicketEvent',
   {
-    id: text('id').primaryKey(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => cuid()),
     ticketId: text('ticketId')
       .notNull()
       .references(() => ticket.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
     type: text('type').notNull(),
     actorId: text('actorId').notNull(),
-    metadata: jsonb('metadata'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     createdAt: timestamp('createdAt', { precision: 3, mode: 'date' }).notNull().defaultNow(),
   },
   (t) => [index('TicketEvent_ticketId_createdAt_idx').on(t.ticketId, t.createdAt)],

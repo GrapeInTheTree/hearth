@@ -30,8 +30,8 @@ CREATE TABLE "PanelTicketType" (
 	"buttonLabel" text,
 	"buttonOrder" integer DEFAULT 0 NOT NULL,
 	"activeCategoryId" text NOT NULL,
-	"supportRoleIds" text[],
-	"pingRoleIds" text[],
+	"supportRoleIds" text[] NOT NULL,
+	"pingRoleIds" text[] NOT NULL,
 	"perUserLimit" integer,
 	"welcomeMessage" text
 );

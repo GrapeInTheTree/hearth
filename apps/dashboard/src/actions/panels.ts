@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@hearth/database';
+import { db, dbDrizzle } from '@hearth/database';
 import { type ActionError, type Result, err, isErr, ok } from '@hearth/shared';
 import { type PanelInput, PanelInputSchema, PanelService } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
@@ -52,7 +52,7 @@ function getPanelService(): PanelService {
       },
     },
   );
-  return new PanelService(db, gateway as never, branding);
+  return new PanelService(dbDrizzle, gateway as never, branding);
 }
 
 /**
