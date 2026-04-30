@@ -1,6 +1,7 @@
 import '@sapphire/plugin-logger/register';
 
 import { dbDrizzle } from '@hearth/database';
+import { runMigrations } from '@hearth/database/migrate';
 import { container as diContainer } from '@sapphire/framework';
 import {
   ApplicationCommandRegistries,
@@ -73,6 +74,14 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 }
 
 try {
+  // Apply unapplied DB migrations before opening the gateway connection.
+  // On a fresh DB this creates everything; on a Prisma-managed prod DB
+  // the adoption path inside runMigrations marks 0000_init as already
+  // applied so no schema change occurs. Either way, the schema matches
+  // the canonical Drizzle definition before any service queries run.
+  await runMigrations(env.DATABASE_URL);
+  client.logger.info('✅ Database migrations applied');
+
   await client.login(env.DISCORD_TOKEN);
   await startInternalApi({
     port: env.PORT,

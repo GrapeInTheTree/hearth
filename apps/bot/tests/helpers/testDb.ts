@@ -1,8 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import { type DbDrizzle, schema } from '@hearth/database';
+import { runMigrations } from '@hearth/database/migrate';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -18,11 +17,10 @@ export function isDockerAvailable(): boolean {
 }
 
 // Spins a real Postgres 16 container, applies the canonical Drizzle
-// migration (`packages/database/drizzle/0000_init.sql`), and returns a
-// Drizzle client wired through `pg.Pool`. Validates schema, indexes,
-// partial unique index, FK enforcement, and JSONB type parsers
-// end-to-end against production-equivalent Postgres — things the
-// pglite-based unit tests cover semantically but not at the wire level.
+// migrations via `runMigrations()`, and returns a Drizzle client wired
+// through `pg.Pool`. This validates the same migrator the bot calls at
+// boot — schema, indexes, partial unique index, FK enforcement, JSONB
+// type parsers — end-to-end against production-equivalent Postgres.
 
 export interface IntegrationDb {
   readonly db: DbDrizzle;
@@ -33,23 +31,6 @@ export interface IntegrationDb {
 
 const POSTGRES_IMAGE = 'postgres:16-alpine';
 
-const MIGRATION_PATH = resolve(
-  import.meta.dirname,
-  '../../../../packages/database/drizzle/0000_init.sql',
-);
-
-let cachedSql: string | undefined;
-
-function loadInitSql(): string {
-  if (cachedSql !== undefined) return cachedSql;
-  const raw = readFileSync(MIGRATION_PATH, 'utf-8');
-  // drizzle-kit emits `--> statement-breakpoint` between DDL statements.
-  // pg's query handles a multi-statement string fine, but the markers
-  // confuse the parser, so strip them.
-  cachedSql = raw.replace(/--> statement-breakpoint\n?/g, '');
-  return cachedSql;
-}
-
 export async function startIntegrationDb(): Promise<IntegrationDb> {
   const container = await new PostgreSqlContainer(POSTGRES_IMAGE)
     .withDatabase('hearth_test')
@@ -59,15 +40,15 @@ export async function startIntegrationDb(): Promise<IntegrationDb> {
 
   const databaseUrl = container.getConnectionUri();
 
-  const pool = new Pool({ connectionString: databaseUrl });
-  // Apply the canonical schema. PR-4 wraps this in a `runMigrations`
-  // helper that's also called from bot boot; for now the test inlines
-  // the read+exec.
-  await pool.query(loadInitSql());
+  // Run migrations the same way prod will (via `runMigrations` from
+  // @hearth/database). On a fresh container, the migrator creates the
+  // tracker table and applies 0000_init normally.
+  await runMigrations(databaseUrl);
 
+  // Construct a pool + Drizzle client for the test to use. `runMigrations`
+  // drains its own pool on completion, so we open a fresh one here.
+  const pool = new Pool({ connectionString: databaseUrl });
   const drizzleClient = drizzle(pool, { schema });
-  // Smoke-test the connection so test failures surface here rather than
-  // mid-test.
   await pool.query('SELECT 1');
 
   return {
