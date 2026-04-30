@@ -1,5 +1,4 @@
-import { db } from '@hearth/database';
-import { TicketStatus } from '@hearth/database';
+import { and, count, dbDrizzle, eq, inArray, schema, TicketStatus } from '@hearth/database';
 import Link from 'next/link';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -22,13 +21,30 @@ export default async function GuildOverviewPage({
   if (session === null) return <></>;
 
   const { guildId } = await params;
-  const [panels, openTickets, closedTickets] = await Promise.all([
-    db.panel.count({ where: { guildId } }),
-    db.ticket.count({
-      where: { guildId, status: { in: [TicketStatus.open, TicketStatus.claimed] } },
-    }),
-    db.ticket.count({ where: { guildId, status: TicketStatus.closed } }),
+  const [panelsRows, openRows, closedRows] = await Promise.all([
+    dbDrizzle
+      .select({ value: count() })
+      .from(schema.panel)
+      .where(eq(schema.panel.guildId, guildId)),
+    dbDrizzle
+      .select({ value: count() })
+      .from(schema.ticket)
+      .where(
+        and(
+          eq(schema.ticket.guildId, guildId),
+          inArray(schema.ticket.status, [TicketStatus.open, TicketStatus.claimed]),
+        ),
+      ),
+    dbDrizzle
+      .select({ value: count() })
+      .from(schema.ticket)
+      .where(
+        and(eq(schema.ticket.guildId, guildId), eq(schema.ticket.status, TicketStatus.closed)),
+      ),
   ]);
+  const panels = panelsRows[0]?.value ?? 0;
+  const openTickets = openRows[0]?.value ?? 0;
+  const closedTickets = closedRows[0]?.value ?? 0;
 
   const avatarUrl =
     session.user.avatarHash !== null

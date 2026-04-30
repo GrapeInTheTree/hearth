@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@hearth/database';
+import { dbDrizzle, schema } from '@hearth/database';
 import { type ActionError, type Result, err, isErr, ok } from '@hearth/shared';
 import { SnowflakeSchema } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
@@ -39,11 +39,13 @@ export async function setArchiveCategory(
     archiveCategoryId = null;
   }
 
-  await db.guildConfig.upsert({
-    where: { guildId: args.guildId },
-    create: { guildId: args.guildId, archiveCategoryId },
-    update: { archiveCategoryId },
-  });
+  await dbDrizzle
+    .insert(schema.guildConfig)
+    .values({ guildId: args.guildId, archiveCategoryId })
+    .onConflictDoUpdate({
+      target: schema.guildConfig.guildId,
+      set: { archiveCategoryId, updatedAt: new Date() },
+    });
 
   revalidatePath(`/g/${args.guildId}/settings`);
   return ok({ guildId: args.guildId, archiveCategoryId });
@@ -74,11 +76,13 @@ export async function setLogChannel(
     alertChannelId = null;
   }
 
-  await db.guildConfig.upsert({
-    where: { guildId: args.guildId },
-    create: { guildId: args.guildId, alertChannelId },
-    update: { alertChannelId },
-  });
+  await dbDrizzle
+    .insert(schema.guildConfig)
+    .values({ guildId: args.guildId, alertChannelId })
+    .onConflictDoUpdate({
+      target: schema.guildConfig.guildId,
+      set: { alertChannelId, updatedAt: new Date() },
+    });
 
   revalidatePath(`/g/${args.guildId}/settings`);
   return ok({ guildId: args.guildId, alertChannelId });

@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { dbDrizzle, eq, schema } from '@hearth/database';
 import { redirect } from 'next/navigation';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -19,10 +19,16 @@ export default async function SettingsPage({
   if (session === null) redirect('/login');
 
   const { guildId } = await params;
-  const [config, resources] = await Promise.all([
-    db.guildConfig.findUnique({ where: { guildId } }),
+  const [configRow, resources] = await Promise.all([
+    dbDrizzle
+      .select()
+      .from(schema.guildConfig)
+      .where(eq(schema.guildConfig.guildId, guildId))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
     callBot<GuildResources>({ path: `/internal/guilds/${guildId}/resources` }),
   ]);
+  const config = configRow;
 
   const avatarUrl =
     session.user.avatarHash !== null

@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { dbDrizzle, eq, schema } from '@hearth/database';
 import { notFound, redirect } from 'next/navigation';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -19,14 +19,21 @@ export default async function NewTypePage({
   if (session === null) redirect('/login');
   const { guildId, panelId } = await params;
 
-  const [panel, resources] = await Promise.all([
-    db.panel.findUnique({
-      where: { id: panelId },
-      select: { id: true, guildId: true, embedTitle: true },
-    }),
+  const [panelRow, resources] = await Promise.all([
+    dbDrizzle
+      .select({
+        id: schema.panel.id,
+        guildId: schema.panel.guildId,
+        embedTitle: schema.panel.embedTitle,
+      })
+      .from(schema.panel)
+      .where(eq(schema.panel.id, panelId))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
     callBot<GuildResources>({ path: `/internal/guilds/${guildId}/resources` }),
   ]);
-  if (panel === null || panel.guildId !== guildId) notFound();
+  if (panelRow === null || panelRow.guildId !== guildId) notFound();
+  const panel = panelRow;
 
   const avatarUrl =
     session.user.avatarHash !== null

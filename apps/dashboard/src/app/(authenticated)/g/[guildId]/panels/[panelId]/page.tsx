@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { asc, dbDrizzle, eq, schema } from '@hearth/database';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 
@@ -23,11 +23,11 @@ export default async function PanelDetailPage({
   if (session === null) redirect('/login');
 
   const { guildId, panelId } = await params;
-  const panel = await db.panel.findUnique({
-    where: { id: panelId },
-    include: { ticketTypes: { orderBy: { buttonOrder: 'asc' } } },
+  const panel = await dbDrizzle.query.panel.findFirst({
+    where: eq(schema.panel.id, panelId),
+    with: { ticketTypes: { orderBy: asc(schema.panelTicketType.buttonOrder) } },
   });
-  if (panel === null || panel.guildId !== guildId) notFound();
+  if (panel === undefined || panel.guildId !== guildId) notFound();
 
   const avatarUrl =
     session.user.avatarHash !== null

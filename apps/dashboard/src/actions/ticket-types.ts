@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@hearth/database';
+import { count, dbDrizzle, eq, schema } from '@hearth/database';
 import { type ActionError, type Result, err, isErr, ok } from '@hearth/shared';
 import { type TicketTypeInput, TicketTypeInputSchema } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
@@ -43,11 +43,11 @@ export async function addTicketType(
     return err({ code: 'VALIDATION_ERROR', message: parsed.error.message });
   }
 
-  const panel = await db.panel.findUnique({
-    where: { id: parsed.data.panelId },
-    include: { ticketTypes: { select: { name: true } } },
+  const panel = await dbDrizzle.query.panel.findFirst({
+    where: eq(schema.panel.id, parsed.data.panelId),
+    with: { ticketTypes: { columns: { name: true } } },
   });
-  if (panel === null || panel.guildId !== args.guildId) {
+  if (panel === undefined || panel.guildId !== args.guildId) {
     return err({
       code: 'NOT_FOUND',
       message: `Panel ${parsed.data.panelId} not found in this guild`,
@@ -60,8 +60,9 @@ export async function addTicketType(
     });
   }
 
-  const created = await db.panelTicketType.create({
-    data: {
+  const [created] = await dbDrizzle
+    .insert(schema.panelTicketType)
+    .values({
       panelId: parsed.data.panelId,
       name: parsed.data.name,
       buttonLabel: parsed.data.label,
@@ -73,8 +74,11 @@ export async function addTicketType(
       pingRoleIds: [...parsed.data.pingRoleIds],
       perUserLimit: parsed.data.perUserLimit,
       welcomeMessage: parsed.data.welcomeMessage ?? null,
-    },
-  });
+    })
+    .returning();
+  if (created === undefined) {
+    return err({ code: 'INTERNAL_ERROR', message: 'Failed to insert ticket type' });
+  }
 
   const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
     path: `/internal/panels/${parsed.data.panelId}/render`,
@@ -120,39 +124,40 @@ export async function editTicketType(
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
 
-  const existing = await db.panelTicketType.findUnique({
-    where: { id: args.typeId },
-    include: { panel: { select: { guildId: true, id: true } } },
+  const existing = await dbDrizzle.query.panelTicketType.findFirst({
+    where: eq(schema.panelTicketType.id, args.typeId),
+    with: { panel: { columns: { guildId: true, id: true } } },
   });
-  if (existing === null || existing.panel.guildId !== args.guildId) {
+  if (existing === undefined || existing.panel.guildId !== args.guildId) {
     return err({
       code: 'NOT_FOUND',
       message: `Ticket type ${args.typeId} not found in this guild`,
     });
   }
 
-  await db.panelTicketType.update({
-    where: { id: args.typeId },
-    data: {
-      ...(args.fields.label !== undefined ? { buttonLabel: args.fields.label } : {}),
-      ...(args.fields.emoji !== undefined ? { emoji: args.fields.emoji } : {}),
-      ...(args.fields.buttonStyle !== undefined ? { buttonStyle: args.fields.buttonStyle } : {}),
-      ...(args.fields.buttonOrder !== undefined ? { buttonOrder: args.fields.buttonOrder } : {}),
-      ...(args.fields.activeCategoryId !== undefined
-        ? { activeCategoryId: args.fields.activeCategoryId }
-        : {}),
-      ...(args.fields.supportRoleIds !== undefined
-        ? { supportRoleIds: [...args.fields.supportRoleIds] }
-        : {}),
-      ...(args.fields.pingRoleIds !== undefined
-        ? { pingRoleIds: [...args.fields.pingRoleIds] }
-        : {}),
-      ...(args.fields.perUserLimit !== undefined ? { perUserLimit: args.fields.perUserLimit } : {}),
-      ...(args.fields.welcomeMessage !== undefined
-        ? { welcomeMessage: args.fields.welcomeMessage }
-        : {}),
-    },
-  });
+  const updates: Partial<typeof schema.panelTicketType.$inferInsert> = {};
+  if (args.fields.label !== undefined) updates.buttonLabel = args.fields.label;
+  if (args.fields.emoji !== undefined) updates.emoji = args.fields.emoji;
+  if (args.fields.buttonStyle !== undefined) updates.buttonStyle = args.fields.buttonStyle;
+  if (args.fields.buttonOrder !== undefined) updates.buttonOrder = args.fields.buttonOrder;
+  if (args.fields.activeCategoryId !== undefined) {
+    updates.activeCategoryId = args.fields.activeCategoryId;
+  }
+  if (args.fields.supportRoleIds !== undefined) {
+    updates.supportRoleIds = [...args.fields.supportRoleIds];
+  }
+  if (args.fields.pingRoleIds !== undefined) {
+    updates.pingRoleIds = [...args.fields.pingRoleIds];
+  }
+  if (args.fields.perUserLimit !== undefined) updates.perUserLimit = args.fields.perUserLimit;
+  if (args.fields.welcomeMessage !== undefined) updates.welcomeMessage = args.fields.welcomeMessage;
+
+  if (Object.keys(updates).length > 0) {
+    await dbDrizzle
+      .update(schema.panelTicketType)
+      .set(updates)
+      .where(eq(schema.panelTicketType.id, args.typeId));
+  }
 
   const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
     path: `/internal/panels/${existing.panel.id}/render`,
@@ -186,11 +191,11 @@ export async function removeTicketType(
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
 
-  const existing = await db.panelTicketType.findUnique({
-    where: { id: args.typeId },
-    include: { panel: { select: { guildId: true, id: true } } },
+  const existing = await dbDrizzle.query.panelTicketType.findFirst({
+    where: eq(schema.panelTicketType.id, args.typeId),
+    with: { panel: { columns: { guildId: true, id: true } } },
   });
-  if (existing === null || existing.panel.guildId !== args.guildId) {
+  if (existing === undefined || existing.panel.guildId !== args.guildId) {
     return err({
       code: 'NOT_FOUND',
       message: `Ticket type ${args.typeId} not found in this guild`,
@@ -199,7 +204,11 @@ export async function removeTicketType(
 
   // FK is RESTRICT — block removal while any Ticket points at this type.
   // Same copy as the slash command for consistency with bot behavior.
-  const ticketCount = await db.ticket.count({ where: { panelTypeId: args.typeId } });
+  const [counted] = await dbDrizzle
+    .select({ value: count() })
+    .from(schema.ticket)
+    .where(eq(schema.ticket.panelTypeId, args.typeId));
+  const ticketCount = counted?.value ?? 0;
   if (ticketCount > 0) {
     return err({
       code: 'CONFLICT',
@@ -207,7 +216,7 @@ export async function removeTicketType(
     });
   }
 
-  await db.panelTicketType.delete({ where: { id: args.typeId } });
+  await dbDrizzle.delete(schema.panelTicketType).where(eq(schema.panelTicketType.id, args.typeId));
 
   const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
     path: `/internal/panels/${existing.panel.id}/render`,

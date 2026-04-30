@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { asc, dbDrizzle, eq, schema } from '@hearth/database';
 import { notFound, redirect } from 'next/navigation';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -28,15 +28,15 @@ export default async function TicketDetailPage({
   if (session === null) redirect('/login');
 
   const { guildId, ticketId } = await params;
-  const ticket = await db.ticket.findUnique({
-    where: { id: ticketId },
-    include: {
-      panel: { select: { id: true, embedTitle: true } },
-      panelType: { select: { id: true, name: true, emoji: true, buttonLabel: true } },
-      events: { orderBy: { createdAt: 'asc' } },
+  const ticket = await dbDrizzle.query.ticket.findFirst({
+    where: eq(schema.ticket.id, ticketId),
+    with: {
+      panel: { columns: { id: true, embedTitle: true } },
+      panelType: { columns: { id: true, name: true, emoji: true, buttonLabel: true } },
+      events: { orderBy: asc(schema.ticketEvent.createdAt) },
     },
   });
-  if (ticket === null || ticket.guildId !== guildId) notFound();
+  if (ticket === undefined || ticket.guildId !== guildId) notFound();
 
   // Resolve all snowflakes appearing on this page (opener, claimer,
   // channel, every event actor) to display names in one batch call. Bot

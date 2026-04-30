@@ -30,10 +30,8 @@ export {
   isUniqueViolation,
 } from './errors.js';
 
-// ─── Prisma (legacy — removed in PR-6) ────────────────────────────────
-// Kept exported so dashboard RSC pages and the legacy direct-`db.X`
-// Server Actions still compile. PR-3 migrates them to the Drizzle
-// surface above; PR-6 then drops these exports along with the
-// `@prisma/client` dependency.
-export { db, type DbClient } from './client.js';
-export { Prisma, PrismaClient } from './generated/client/client.js';
+// Prisma exports were dropped in PR-3 — every caller (services, bot
+// container, dashboard RSC pages, dashboard Server Actions, integration
+// tests) now uses the Drizzle surface above. PR-6 deletes the residual
+// Prisma generator output (`prisma/`, `src/generated/`, `client.ts`)
+// and removes `@prisma/client` from the lockfile.

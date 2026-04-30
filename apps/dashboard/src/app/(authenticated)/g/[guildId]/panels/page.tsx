@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { asc, dbDrizzle, eq, schema } from '@hearth/database';
 import Link from 'next/link';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -17,10 +17,18 @@ export default async function PanelsListPage({
   if (session === null) return <></>;
 
   const { guildId } = await params;
-  const panels = await db.panel.findMany({
-    where: { guildId },
-    orderBy: { createdAt: 'asc' },
-    include: { _count: { select: { ticketTypes: true, tickets: true } } },
+  // Fetch panels with their ticketTypes + tickets ID-only — we just need
+  // counts for the list summary. Drizzle has no `_count` aggregate
+  // include like Prisma; an extras-with-subquery would be more efficient
+  // for large N but typical guilds have a handful of panels, so reading
+  // ID arrays and taking `.length` keeps the call site obvious.
+  const panels = await dbDrizzle.query.panel.findMany({
+    where: eq(schema.panel.guildId, guildId),
+    orderBy: asc(schema.panel.createdAt),
+    with: {
+      ticketTypes: { columns: { id: true } },
+      tickets: { columns: { id: true } },
+    },
   });
 
   const avatarUrl =
@@ -65,8 +73,8 @@ export default async function PanelsListPage({
                       <CardTitle className="text-base">{p.embedTitle}</CardTitle>
                       <CardDescription>
                         <code className="font-mono text-xs">#{p.channelId}</code> ·{' '}
-                        {p._count.ticketTypes} type{p._count.ticketTypes === 1 ? '' : 's'} ·{' '}
-                        {p._count.tickets} ticket{p._count.tickets === 1 ? '' : 's'}
+                        {p.ticketTypes.length} type{p.ticketTypes.length === 1 ? '' : 's'} ·{' '}
+                        {p.tickets.length} ticket{p.tickets.length === 1 ? '' : 's'}
                       </CardDescription>
                     </CardHeader>
                   </Card>

@@ -1,4 +1,4 @@
-import { db } from '@hearth/database';
+import { dbDrizzle, eq, schema } from '@hearth/database';
 import { notFound, redirect } from 'next/navigation';
 
 import { Topbar } from '@/components/layout/topbar';
@@ -26,13 +26,15 @@ export default async function EditTypePage({
   const { guildId, panelId, typeId } = await params;
 
   const [type, resources] = await Promise.all([
-    db.panelTicketType.findUnique({
-      where: { id: typeId },
-      include: { panel: { select: { id: true, guildId: true } } },
+    dbDrizzle.query.panelTicketType.findFirst({
+      where: eq(schema.panelTicketType.id, typeId),
+      with: { panel: { columns: { id: true, guildId: true } } },
     }),
     callBot<GuildResources>({ path: `/internal/guilds/${guildId}/resources` }),
   ]);
-  if (type === null || type.panel.guildId !== guildId || type.panel.id !== panelId) notFound();
+  if (type === undefined || type.panel.guildId !== guildId || type.panel.id !== panelId) {
+    notFound();
+  }
 
   const avatarUrl =
     session.user.avatarHash !== null

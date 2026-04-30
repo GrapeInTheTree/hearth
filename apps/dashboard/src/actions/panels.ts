@@ -1,6 +1,6 @@
 'use server';
 
-import { db, dbDrizzle } from '@hearth/database';
+import { dbDrizzle, eq, schema } from '@hearth/database';
 import { type ActionError, type Result, err, isErr, ok } from '@hearth/shared';
 import { type PanelInput, PanelInputSchema, PanelService } from '@hearth/tickets-core';
 import { revalidatePath } from 'next/cache';
@@ -80,15 +80,19 @@ export async function createPanel(
   // through the stub gateway (we don't have one in the dashboard process),
   // so we use a thin path: call the underlying DB upsert via PanelService
   // with a safe write-only flow, then trigger render via callBot.
-  const created = await db.panel.create({
-    data: {
+  const [created] = await dbDrizzle
+    .insert(schema.panel)
+    .values({
       guildId: parsed.data.guildId,
       channelId: parsed.data.channelId,
       messageId: 'pending',
       embedTitle: parsed.data.embedTitle ?? 'Contact Team',
       embedDescription: parsed.data.embedDescription ?? 'Click a button below to open a ticket.',
-    },
-  });
+    })
+    .returning();
+  if (created === undefined) {
+    return err({ code: 'INTERNAL_ERROR', message: 'Failed to create panel row' });
+  }
 
   const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
     path: `/internal/panels/${created.id}/render`,
@@ -131,13 +135,12 @@ export async function updatePanel(
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
 
-  await db.panel.update({
-    where: { id: args.panelId },
-    data: {
-      ...(args.embedTitle !== undefined ? { embedTitle: args.embedTitle } : {}),
-      ...(args.embedDescription !== undefined ? { embedDescription: args.embedDescription } : {}),
-    },
-  });
+  const updates: Partial<typeof schema.panel.$inferInsert> = {};
+  if (args.embedTitle !== undefined) updates.embedTitle = args.embedTitle;
+  if (args.embedDescription !== undefined) updates.embedDescription = args.embedDescription;
+  if (Object.keys(updates).length > 0) {
+    await dbDrizzle.update(schema.panel).set(updates).where(eq(schema.panel.id, args.panelId));
+  }
 
   const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
     path: `/internal/panels/${args.panelId}/render`,

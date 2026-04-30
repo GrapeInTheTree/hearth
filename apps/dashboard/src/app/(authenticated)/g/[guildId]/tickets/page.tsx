@@ -1,4 +1,4 @@
-import { db, TicketStatus } from '@hearth/database';
+import { and, dbDrizzle, desc, eq, inArray, schema, TicketStatus } from '@hearth/database';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -22,11 +22,12 @@ interface TicketsListPageProps {
 const STATUS_FILTERS: readonly {
   value: string;
   label: string;
-  predicate: { in: TicketStatus[] } | TicketStatus | undefined;
+  /** Statuses to include — `null` means "all statuses". */
+  statuses: readonly TicketStatus[] | null;
 }[] = [
-  { value: 'all', label: 'All', predicate: undefined },
-  { value: 'open', label: 'Open', predicate: { in: [TicketStatus.open, TicketStatus.claimed] } },
-  { value: 'closed', label: 'Closed', predicate: TicketStatus.closed },
+  { value: 'all', label: 'All', statuses: null },
+  { value: 'open', label: 'Open', statuses: [TicketStatus.open, TicketStatus.claimed] },
+  { value: 'closed', label: 'Closed', statuses: [TicketStatus.closed] },
 ];
 
 export default async function TicketsListPage({
@@ -42,14 +43,13 @@ export default async function TicketsListPage({
   const filter = matchedFilter ?? STATUS_FILTERS[0];
   if (filter === undefined) throw new Error('STATUS_FILTERS empty — invariant');
 
-  const tickets = await db.ticket.findMany({
-    where: {
-      guildId,
-      ...(filter.predicate !== undefined ? { status: filter.predicate } : {}),
-    },
-    include: { panelType: { select: { name: true, emoji: true } } },
-    orderBy: { openedAt: 'desc' },
-    take: 50,
+  const statusClause =
+    filter.statuses === null ? undefined : inArray(schema.ticket.status, [...filter.statuses]);
+  const tickets = await dbDrizzle.query.ticket.findMany({
+    where: and(eq(schema.ticket.guildId, guildId), statusClause),
+    with: { panelType: { columns: { name: true, emoji: true } } },
+    orderBy: desc(schema.ticket.openedAt),
+    limit: 50,
   });
 
   // Batch-resolve openerIds → usernames via the bot's discord.js cache.
