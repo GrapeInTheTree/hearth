@@ -30,11 +30,14 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "db:format": "prisma format"
+    "db:format": "prisma format",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:check": "drizzle-kit check"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
+    "drizzle-orm": "0.45.2",
     "pg": "8.20.0"
   },
   "devDependencies": {
@@ -42,6 +45,7 @@
     "@hearth/tsconfig": "workspace:*",
     "@types/node": "22.10.2",
     "@types/pg": "8.20.0",
+    "drizzle-kit": "0.31.10",
     "eslint": "9.17.0",
     "prisma": "7.8.0",
     "tsup": "8.3.5",
