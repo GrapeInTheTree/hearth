@@ -20,15 +20,26 @@ import {
   type Result,
   ValidationError,
 } from '@hearth/shared';
+import cuid from 'cuid';
 
 import type { Branding } from './branding.js';
 import type { GuildConfigService } from './guildConfigService.js';
 import { format, tickets as i18nTickets } from './i18n/index.js';
+import { withAdvisoryLock } from './lib/advisoryLock.js';
 import { formatChannelName } from './lib/format.js';
+import { ticketOpenLockKey } from './lib/lockKeys.js';
 import { hasManageGuild, isSupportStaff } from './lib/permissions.js';
 import { buildWelcomeMessage } from './lib/welcomeBuilder.js';
 import type { PanelService } from './panelService.js';
 import type { DiscordGateway, ModlogEmbed } from './ports/discordGateway.js';
+
+// pg_advisory_xact_lock acquisition timeout. Same-tuple contention
+// (same user double-clicking the same panel type) is the only path
+// this fires on; 200ms is generous since the locked critical section
+// is three small INSERTs (~5ms total). Hitting the timeout means a
+// concurrent racer holds the lock — caller maps to alreadyOpen
+// ConflictError, identical UX to the partial-unique collision path.
+const OPEN_TICKET_LOCK_TIMEOUT_MS = 200;
 
 // Soft cap: Discord categories hold up to 50 channels. We refuse new tickets
 // at 48 to leave headroom for two concurrent racers between the count and the
@@ -78,12 +89,14 @@ export class TicketService {
   // ─────────────────────────────── open ───────────────────────────────
 
   public async openTicket(input: OpenTicketInput): Promise<Result<Ticket, OpenTicketError>> {
-    // Read panel/type outside the lock — fast; failure is independent of contention.
+    // Read panel/type outside the lock — fast and read-only; failure is
+    // independent of contention. Same path as before PR-7.
     const panelResult = await this.panel.getPanelTypeForOpen(input.panelId, input.typeId);
     if (!panelResult.ok) return err(panelResult.error);
     const { type } = panelResult.value;
 
-    // Soft-cap check before holding the lock so we fail fast on overflow.
+    // Soft-cap check before the lock so we fail fast on category overflow
+    // without ever issuing a DB write.
     let childCount: number;
     try {
       childCount = await this.gateway.countCategoryChildren(type.activeCategoryId);
@@ -95,90 +108,88 @@ export class TicketService {
       return err(new ConflictError(i18nTickets.errors.categoryFull));
     }
 
-    // Best-effort pre-flight: cheap "already open?" check so a duplicate
-    // click never even creates a Discord channel. The race between this
-    // SELECT and the INSERT below is closed by the partial unique index
-    // `ticket_open_dedupe (guildId, openerId, panelTypeId) WHERE status IN
-    // ('open', 'claimed')` — concurrent INSERTs collide on 23505 and we
-    // map that to ConflictError + clean up the orphan channel. PR-7
-    // replaces this optimistic path with `withAdvisoryLock` so the orphan
-    // channel rollback path is eliminated.
-    const [existing] = await this.db
-      .select({ id: schema.ticket.id })
-      .from(schema.ticket)
-      .where(
-        and(
-          eq(schema.ticket.guildId, input.guildId),
-          eq(schema.ticket.openerId, input.openerId),
-          eq(schema.ticket.panelTypeId, type.id),
-          inArray(schema.ticket.status, [TicketStatus.open, TicketStatus.claimed]),
-        ),
-      )
-      .limit(1);
-    if (existing !== undefined) {
-      return err(new ConflictError(i18nTickets.errors.alreadyOpen));
-    }
-
-    // Reserve a ticket number outside any transaction. The counter is
-    // monotonic (atomic increment in GuildConfigService); a number can
-    // burn unused if subsequent steps fail, which is acceptable.
-    const number = await this.guildConfig.incrementTicketCounter(this.db, input.guildId);
-    const channelName = formatChannelName(number, input.openerUsername, input.openerId);
-
-    // Create the Discord channel before the DB write — the same shape as
-    // the post-Prisma-7-P2028 workaround. PR-7 reorders this so the DB
-    // row is reserved first inside an advisory-locked tx, then the channel
-    // is created outside the lock; that path eliminates the orphan-channel
-    // rollback below in favor of an orphan-row delete (1ms vs 1-5s).
-    let createdChannelId: string;
+    // Reserve the ticket row inside an advisory-locked transaction. The
+    // critical section is three INSERT statements; the lock serialises
+    // contention on (guildId, openerId, panelTypeId) so concurrent racers
+    // see a clean ConflictError instead of fighting on the partial-unique
+    // index. The Discord channel-create — slow REST round-trip — runs
+    // OUTSIDE the lock; pre-PR-7 it ran first and a 23505 collision had
+    // to roll back the orphan channel (1-5s of REST). Now an orphan row
+    // is the failure mode, and a row delete is sub-millisecond.
+    //
+    // The placeholder channelId 'pending:<cuid>' satisfies the column's
+    // UNIQUE constraint until we patch the real id in step 4.
+    const lockKey = ticketOpenLockKey(input.guildId, input.openerId, type.id);
+    const placeholderChannelId = `pending:${cuid()}`;
+    let pending: Ticket;
     try {
-      const result = await this.gateway.createTicketChannel({
-        guildId: input.guildId,
-        parentId: type.activeCategoryId,
-        name: channelName,
-        topic: `Ticket #${String(number)} • opened by <@${input.openerId}>`,
-        openerId: input.openerId,
-        supportRoleIds: type.supportRoleIds,
-      });
-      createdChannelId = result.channelId;
-    } catch (e) {
-      if (e instanceof DiscordApiError) return err(e);
-      throw e;
-    }
+      pending = await withAdvisoryLock(
+        this.db,
+        { key: lockKey, timeoutMs: OPEN_TICKET_LOCK_TIMEOUT_MS },
+        async (tx) => {
+          // Re-check existing inside the lock. Since the lock serialises
+          // (guildId, openerId, panelTypeId) tuples, this read sees the
+          // committed state of the previous winner and returns true if
+          // they're already open or claimed.
+          const [existing] = await tx
+            .select({ id: schema.ticket.id })
+            .from(schema.ticket)
+            .where(
+              and(
+                eq(schema.ticket.guildId, input.guildId),
+                eq(schema.ticket.openerId, input.openerId),
+                eq(schema.ticket.panelTypeId, type.id),
+                inArray(schema.ticket.status, [TicketStatus.open, TicketStatus.claimed]),
+              ),
+            )
+            .limit(1);
+          if (existing !== undefined) {
+            throw new ConflictError(i18nTickets.errors.alreadyOpen);
+          }
 
-    // Two separate writes — no interactive transaction. The Ticket INSERT
-    // carries the critical invariants (channel link, partial unique
-    // dedupe); the TicketEvent INSERT is metadata that, if it fails,
-    // leaves the ticket usable but missing its 'opened' marker —
-    // recoverable in a follow-up audit, and the channelDelete listener
-    // / lifecycle events don't depend on it.
-    let ticket: Ticket;
-    try {
-      const [inserted] = await this.db
-        .insert(schema.ticket)
-        .values({
-          guildId: input.guildId,
-          panelId: input.panelId,
-          panelTypeId: type.id,
-          channelId: createdChannelId,
-          number,
-          openerId: input.openerId,
-          status: TicketStatus.open,
-        })
-        .returning();
-      if (inserted === undefined) {
-        throw new Error('Ticket insert returned no row');
-      }
-      ticket = inserted;
+          // Atomic counter increment inside the same tx as the insert
+          // — guarantees the (guildId, number) pair is unique even if
+          // a second tx rolls back after burning a number.
+          const number = await this.guildConfig.incrementTicketCounter(tx, input.guildId);
+
+          const [inserted] = await tx
+            .insert(schema.ticket)
+            .values({
+              guildId: input.guildId,
+              panelId: input.panelId,
+              panelTypeId: type.id,
+              channelId: placeholderChannelId,
+              number,
+              openerId: input.openerId,
+              status: TicketStatus.open,
+            })
+            .returning();
+          if (inserted === undefined) {
+            throw new InternalError('Ticket insert returned no row');
+          }
+
+          // 'opened' event committed in the same tx — no more
+          // best-effort try/catch since transactional consistency is
+          // free now that interactive transactions are reliable.
+          await tx.insert(schema.ticketEvent).values({
+            ticketId: inserted.id,
+            type: 'opened',
+            actorId: input.openerId,
+            metadata: { number },
+          });
+
+          return inserted;
+        },
+      );
     } catch (e) {
-      await this.gateway
-        .deleteChannel(createdChannelId, 'ticket open rolled back')
-        .catch(() => undefined);
+      if (e instanceof ConflictError) return err(e);
+      // The partial unique index is belt-and-suspenders for the lock —
+      // if Postgres ever serves the same lock key to two waiters (it
+      // shouldn't), 23505 still catches the collision.
       if (isUniqueViolation(e)) {
         return err(new ConflictError(i18nTickets.errors.alreadyOpen, e));
       }
       if (
-        e instanceof ConflictError ||
         e instanceof NotFoundError ||
         e instanceof ValidationError ||
         e instanceof DiscordApiError
@@ -188,23 +199,44 @@ export class TicketService {
       throw e;
     }
 
-    // Best-effort 'opened' event. Failure is logged but doesn't roll
-    // back the ticket — the event is audit-trail metadata, not a
-    // critical invariant. A future audit job can backfill from the
-    // ticket's openedAt + openerId if needed.
+    // Outside the lock: create the Discord channel. The DB row is
+    // already committed; if this fails, we delete the orphan row
+    // (~1ms) instead of the orphan channel (~1-5s).
+    const channelName = formatChannelName(pending.number, input.openerUsername, input.openerId);
+    let createdChannelId: string;
     try {
-      await this.db.insert(schema.ticketEvent).values({
-        ticketId: ticket.id,
-        type: 'opened',
-        actorId: input.openerId,
-        metadata: { channelId: createdChannelId, number },
+      const result = await this.gateway.createTicketChannel({
+        guildId: input.guildId,
+        parentId: type.activeCategoryId,
+        name: channelName,
+        topic: `Ticket #${String(pending.number)} • opened by <@${input.openerId}>`,
+        openerId: input.openerId,
+        supportRoleIds: type.supportRoleIds,
       });
-    } catch (eventErr) {
-      // eslint-disable-next-line no-console
-      console.warn('[openTicket] failed to create opened event', eventErr);
+      createdChannelId = result.channelId;
+    } catch (e) {
+      // Roll back the row so the user can retry without hitting
+      // alreadyOpen. Cascade drops the 'opened' event with it.
+      await this.db
+        .delete(schema.ticket)
+        .where(eq(schema.ticket.id, pending.id))
+        .catch(() => undefined);
+      if (e instanceof DiscordApiError) return err(e);
+      throw e;
     }
 
-    // Send welcome message OUTSIDE any transaction — Discord call is slow.
+    // Patch the placeholder channelId with the real one. Single
+    // statement, no transaction needed — the row is already in its
+    // final shape modulo this column.
+    const [withChannel] = await this.db
+      .update(schema.ticket)
+      .set({ channelId: createdChannelId })
+      .where(eq(schema.ticket.id, pending.id))
+      .returning();
+    const ticket = withChannel ?? pending;
+
+    // Send the welcome message and pin it. Failure is non-fatal — the
+    // channel works, the next state change will rebuild the welcome.
     const welcomePayload = buildWelcomeMessage(
       {
         state: 'open',
@@ -215,7 +247,7 @@ export class TicketService {
     );
     try {
       const { messageId } = await this.gateway.sendWelcomeMessage({
-        channelId: ticket.channelId,
+        channelId: createdChannelId,
         payload: welcomePayload,
         pingRoleIds: type.pingRoleIds,
         pin: true,
@@ -227,8 +259,6 @@ export class TicketService {
         .returning();
       return ok(updated ?? ticket);
     } catch (e) {
-      // Welcome message failure is non-fatal — the channel still works,
-      // a future state change will rebuild the welcome.
       if (e instanceof DiscordApiError) {
         return ok(ticket);
       }

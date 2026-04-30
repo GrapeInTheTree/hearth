@@ -147,16 +147,19 @@ describe('TicketService.openTicket', () => {
     }
   });
 
-  it('partial unique race — concurrent opens for the same opener: one wins, loser rolls back its channel', async () => {
+  it('advisory-locked race — concurrent opens for the same opener: one wins, loser sees ConflictError before any channel is created', async () => {
     harness = await setup();
     const input = openInput(harness, { openerId: 'u-racer' });
     const [a, b] = await Promise.all([
       harness.service.openTicket(input),
       harness.service.openTicket(input),
     ]);
-    // Exactly one of the two succeeds — Postgres `ticket_open_dedupe`
-    // partial unique index serializes the race; the loser hits 23505 and
-    // its channel is rolled back via deleteChannel.
+    // Exactly one of the two succeeds. `withAdvisoryLock` serialises
+    // (guildId, openerId, panelTypeId) so the loser sees the committed
+    // row inside its own tx and returns ConflictError BEFORE any
+    // Discord channel-create runs. Net: one channel created, zero
+    // deleted — the orphan-channel rollback path that used to fire
+    // on partial-unique 23505 collisions is gone.
     const successes = [a, b].filter((r) => r.ok);
     const failures = [a, b].filter((r) => !r.ok);
     expect(successes).toHaveLength(1);
@@ -165,8 +168,8 @@ describe('TicketService.openTicket', () => {
       expect(failures[0]!.error).toBeInstanceOf(ConflictError);
     }
     expect(await countTickets(harness)).toBe(1);
-    expect(harness.gateway.callsOf('createTicketChannel')).toHaveLength(2);
-    expect(harness.gateway.callsOf('deleteChannel')).toHaveLength(1);
+    expect(harness.gateway.callsOf('createTicketChannel')).toHaveLength(1);
+    expect(harness.gateway.callsOf('deleteChannel')).toHaveLength(0);
   });
 
   it('different opener can open same type concurrently', async () => {

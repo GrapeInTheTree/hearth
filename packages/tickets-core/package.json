@@ -33,6 +33,7 @@
   "dependencies": {
     "@hearth/database": "workspace:*",
     "@hearth/shared": "workspace:*",
+    "cuid": "3.0.0",
     "discord-api-types": "0.38.47",
     "zod": "3.24.1"
   },
