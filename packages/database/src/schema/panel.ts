@@ -1,4 +1,4 @@
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 import { relations } from 'drizzle-orm';
 import { index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
@@ -12,12 +12,12 @@ import { ticket } from './ticket.js';
 export const panel = pgTable(
   'Panel',
   {
-    // Application-side cuid v1, matching the existing prod IDs from Prisma's
-    // `@default(cuid())`. PR-8 swaps this for `@paralleldrive/cuid2` (still
-    // application-side, only the generator function changes).
+    // Application-side cuid2 (cuid v1 was deprecated in 2023). New rows
+    // get cuid2-shaped 24-char ids; existing prod rows keep their v1
+    // ids (collision-free with v2 by design — different alphabets).
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => cuid()),
+      .$defaultFn(() => createId()),
     guildId: text('guildId').notNull(),
     channelId: text('channelId').notNull(),
     messageId: text('messageId').notNull(),

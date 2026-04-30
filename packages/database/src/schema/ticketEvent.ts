@@ -1,4 +1,4 @@
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 import { relations } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
@@ -17,7 +17,7 @@ export const ticketEvent = pgTable(
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => cuid()),
+      .$defaultFn(() => createId()),
     ticketId: text('ticketId')
       .notNull()
       .references(() => ticket.id, { onDelete: 'cascade', onUpdate: 'cascade' }),

@@ -20,7 +20,7 @@ import {
   type Result,
   ValidationError,
 } from '@hearth/shared';
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 
 import type { Branding } from './branding.js';
 import type { GuildConfigService } from './guildConfigService.js';
@@ -120,7 +120,7 @@ export class TicketService {
     // The placeholder channelId 'pending:<cuid>' satisfies the column's
     // UNIQUE constraint until we patch the real id in step 4.
     const lockKey = ticketOpenLockKey(input.guildId, input.openerId, type.id);
-    const placeholderChannelId = `pending:${cuid()}`;
+    const placeholderChannelId = `pending:${createId()}`;
     let pending: Ticket;
     try {
       pending = await withAdvisoryLock(

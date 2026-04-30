@@ -37,7 +37,8 @@ describe('pglite smoke', () => {
         embedDescription: 'World',
       })
       .returning();
-    expect(panel?.id).toMatch(/^c[a-z0-9]+$/); // cuid v1 shape
+    // cuid2 shape: 24 lowercase alphanumeric chars, starts with a letter.
+    expect(panel?.id).toMatch(/^[a-z][a-z0-9]{23}$/);
     expect(panel?.guildId).toBe('g1');
 
     const [fetched] = await db.select().from(schema.panel).where(eq(schema.panel.id, panel!.id));

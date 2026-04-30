@@ -1,4 +1,4 @@
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 import { relations } from 'drizzle-orm';
 import { index, integer, pgTable, text } from 'drizzle-orm/pg-core';
 
@@ -18,7 +18,7 @@ export const panelTicketType = pgTable(
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => cuid()),
+      .$defaultFn(() => createId()),
     panelId: text('panelId')
       .notNull()
       .references(() => panel.id, { onDelete: 'cascade', onUpdate: 'cascade' }),

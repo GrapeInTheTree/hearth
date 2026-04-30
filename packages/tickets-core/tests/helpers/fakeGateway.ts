@@ -124,9 +124,12 @@ export class FakeDiscordGateway implements DiscordGateway {
   }
 
   public reset(): void {
+    // Only clear call history. The channel/message counters keep
+    // climbing monotonically so cross-test channelId/messageId
+    // collisions can't happen — the integration tests share a single
+    // DB across cases and would otherwise hit Ticket_channelId_key
+    // when reset wound the counter back to 1.
     this.calls.length = 0;
-    this.channelCounter = 0;
-    this.messageCounter = 0;
   }
 
   private record(op: string, args: unknown): void {

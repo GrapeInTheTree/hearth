@@ -1,4 +1,4 @@
-import cuid from 'cuid';
+import { createId } from '@paralleldrive/cuid2';
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
@@ -22,7 +22,7 @@ export const ticket = pgTable(
   {
     id: text('id')
       .primaryKey()
-      .$defaultFn(() => cuid()),
+      .$defaultFn(() => createId()),
     guildId: text('guildId').notNull(),
     panelId: text('panelId')
       .notNull()
