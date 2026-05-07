@@ -1,0 +1,973 @@
+{
+  "id": "8a723f30-9b97-4c57-ad77-93782a7a3c55",
+  "prevId": "a835b78d-37f9-470d-8078-cbfeb9d8946c",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.GuildConfig": {
+      "name": "GuildConfig",
+      "schema": "",
+      "columns": {
+        "guildId": {
+          "name": "guildId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "archiveCategoryId": {
+          "name": "archiveCategoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alertChannelId": {
+          "name": "alertChannelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ticketCounter": {
+          "name": "ticketCounter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "defaultLocale": {
+          "name": "defaultLocale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Panel": {
+      "name": "Panel",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "guildId": {
+          "name": "guildId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channelId": {
+          "name": "channelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "messageId": {
+          "name": "messageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedTitle": {
+          "name": "embedTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedDescription": {
+          "name": "embedDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedColor": {
+          "name": "embedColor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "Panel_guildId_idx": {
+          "name": "Panel_guildId_idx",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "Panel_guildId_channelId_messageId_key": {
+          "name": "Panel_guildId_channelId_messageId_key",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "channelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "messageId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.PanelTicketType": {
+      "name": "PanelTicketType",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "panelId": {
+          "name": "panelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emoji": {
+          "name": "emoji",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "buttonStyle": {
+          "name": "buttonStyle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "buttonLabel": {
+          "name": "buttonLabel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "buttonOrder": {
+          "name": "buttonOrder",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "activeCategoryId": {
+          "name": "activeCategoryId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supportRoleIds": {
+          "name": "supportRoleIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pingRoleIds": {
+          "name": "pingRoleIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "perUserLimit": {
+          "name": "perUserLimit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "welcomeMessage": {
+          "name": "welcomeMessage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "PanelTicketType_panelId_idx": {
+          "name": "PanelTicketType_panelId_idx",
+          "columns": [
+            {
+              "expression": "panelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "PanelTicketType_panelId_Panel_id_fk": {
+          "name": "PanelTicketType_panelId_Panel_id_fk",
+          "tableFrom": "PanelTicketType",
+          "tableTo": "Panel",
+          "columnsFrom": ["panelId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Ticket": {
+      "name": "Ticket",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "guildId": {
+          "name": "guildId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "panelId": {
+          "name": "panelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "panelTypeId": {
+          "name": "panelTypeId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channelId": {
+          "name": "channelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "welcomeMessageId": {
+          "name": "welcomeMessageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "openerId": {
+          "name": "openerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claimedById": {
+          "name": "claimedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "TicketStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "openedAt": {
+          "name": "openedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "claimedAt": {
+          "name": "claimedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closedAt": {
+          "name": "closedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closedById": {
+          "name": "closedById",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closeReason": {
+          "name": "closeReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "Ticket_channelId_key": {
+          "name": "Ticket_channelId_key",
+          "columns": [
+            {
+              "expression": "channelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "Ticket_guildId_status_idx": {
+          "name": "Ticket_guildId_status_idx",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "Ticket_openerId_status_idx": {
+          "name": "Ticket_openerId_status_idx",
+          "columns": [
+            {
+              "expression": "openerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "Ticket_guildId_number_key": {
+          "name": "Ticket_guildId_number_key",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ticket_open_dedupe": {
+          "name": "ticket_open_dedupe",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "openerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "panelTypeId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "status IN ('open', 'claimed')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "Ticket_panelId_Panel_id_fk": {
+          "name": "Ticket_panelId_Panel_id_fk",
+          "tableFrom": "Ticket",
+          "tableTo": "Panel",
+          "columnsFrom": ["panelId"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        },
+        "Ticket_panelTypeId_PanelTicketType_id_fk": {
+          "name": "Ticket_panelTypeId_PanelTicketType_id_fk",
+          "tableFrom": "Ticket",
+          "tableTo": "PanelTicketType",
+          "columnsFrom": ["panelTypeId"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.TicketEvent": {
+      "name": "TicketEvent",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ticketId": {
+          "name": "ticketId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actorId": {
+          "name": "actorId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "TicketEvent_ticketId_createdAt_idx": {
+          "name": "TicketEvent_ticketId_createdAt_idx",
+          "columns": [
+            {
+              "expression": "ticketId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "TicketEvent_ticketId_Ticket_id_fk": {
+          "name": "TicketEvent_ticketId_Ticket_id_fk",
+          "tableFrom": "TicketEvent",
+          "tableTo": "Ticket",
+          "columnsFrom": ["ticketId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.VerificationEvent": {
+      "name": "VerificationEvent",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "panelId": {
+          "name": "panelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "optionId": {
+          "name": "optionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "VerificationEvent_panelId_userId_idx": {
+          "name": "VerificationEvent_panelId_userId_idx",
+          "columns": [
+            {
+              "expression": "panelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "VerificationEvent_createdAt_idx": {
+          "name": "VerificationEvent_createdAt_idx",
+          "columns": [
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "VerificationEvent_panelId_VerificationPanel_id_fk": {
+          "name": "VerificationEvent_panelId_VerificationPanel_id_fk",
+          "tableFrom": "VerificationEvent",
+          "tableTo": "VerificationPanel",
+          "columnsFrom": ["panelId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "VerificationEvent_optionId_VerificationOption_id_fk": {
+          "name": "VerificationEvent_optionId_VerificationOption_id_fk",
+          "tableFrom": "VerificationEvent",
+          "tableTo": "VerificationOption",
+          "columnsFrom": ["optionId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.VerificationOption": {
+      "name": "VerificationOption",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "panelId": {
+          "name": "panelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emoji": {
+          "name": "emoji",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "buttonStyle": {
+          "name": "buttonStyle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "VerificationOption_panelId_idx": {
+          "name": "VerificationOption_panelId_idx",
+          "columns": [
+            {
+              "expression": "panelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "VerificationOption_panelId_position_key": {
+          "name": "VerificationOption_panelId_position_key",
+          "columns": [
+            {
+              "expression": "panelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "VerificationOption_panelId_label_key": {
+          "name": "VerificationOption_panelId_label_key",
+          "columns": [
+            {
+              "expression": "panelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "label",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "VerificationOption_panelId_VerificationPanel_id_fk": {
+          "name": "VerificationOption_panelId_VerificationPanel_id_fk",
+          "tableFrom": "VerificationOption",
+          "tableTo": "VerificationPanel",
+          "columnsFrom": ["panelId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.VerificationPanel": {
+      "name": "VerificationPanel",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "guildId": {
+          "name": "guildId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channelId": {
+          "name": "channelId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "messageId": {
+          "name": "messageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedTitle": {
+          "name": "embedTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedDescription": {
+          "name": "embedDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "roleId": {
+          "name": "roleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correctOptionId": {
+          "name": "correctOptionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "VerificationPanel_guildId_idx": {
+          "name": "VerificationPanel_guildId_idx",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "VerificationPanel_guildId_channelId_messageId_key": {
+          "name": "VerificationPanel_guildId_channelId_messageId_key",
+          "columns": [
+            {
+              "expression": "guildId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "channelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "messageId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.TicketStatus": {
+      "name": "TicketStatus",
+      "schema": "public",
+      "values": ["open", "claimed", "closed"]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

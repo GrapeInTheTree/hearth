@@ -12,3 +12,6 @@ export { panel, panelRelations } from './panel.js';
 export { panelTicketType, panelTicketTypeRelations } from './panelTicketType.js';
 export { ticket, ticketRelations } from './ticket.js';
 export { ticketEvent, ticketEventRelations } from './ticketEvent.js';
+export { verificationPanel, verificationPanelRelations } from './verificationPanel.js';
+export { verificationOption, verificationOptionRelations } from './verificationOption.js';
+export { verificationEvent, verificationEventRelations } from './verificationEvent.js';
