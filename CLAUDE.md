@@ -147,12 +147,19 @@ hearth/
 │   │   │   ├── panelService.ts    # PanelService (DB + gateway)
 │   │   │   ├── ticketService.ts   # TicketService (advisory lock + lifecycle)
 │   │   │   ├── guildConfigService.ts
-│   │   │   ├── ports/discordGateway.ts  # interface — djs 구현은 봇에 잔류
-│   │   │   ├── lib/               # customId, advisoryLock, lockKeys, format, panelBuilder (discord-api-types)
-│   │   │   ├── schemas.ts         # PanelInputSchema, TicketTypeInputSchema, GuildConfigInputSchema
+│   │   │   ├── ports/discordGateway.ts  # interface — djs 구현은 봇에 잔류. verification-core도 이 port를 재사용
+│   │   │   ├── lib/               # customId (cross-domain registry), advisoryLock, lockKeys, format, panelBuilder
+│   │   │   ├── schemas.ts         # PanelInputSchema, TicketTypeInputSchema, GuildConfigInputSchema, SnowflakeSchema (re-export)
 │   │   │   ├── i18n/              # 티켓 도메인 카피 (en bundle)
-│   │   │   └── branding.ts        # Branding interface
+│   │   │   └── branding.ts        # Branding interface (verification-core도 import)
 │   │   └── tests/unit/            # services + lib 단위 테스트 + helpers (FakeDb, FakeGateway)
+│   ├── verification-core/         # 봇 + 대시보드 공용 — verification 도메인 (DEFI-658, services + builder + i18n + zod schemas)
+│   │   ├── src/
+│   │   │   ├── verificationService.ts   # CRUD + handleSubmission outcome pipeline
+│   │   │   ├── lib/verificationBuilder.ts  # buildVerificationPayload (embed + button row)
+│   │   │   ├── schemas.ts         # VerificationPanelInputSchema, VerificationOptionInputSchema
+│   │   │   └── i18n/              # verification 도메인 카피 (success/wrong/already/role_assign_failed 등)
+│   │   └── tests/unit/            # 41 unit tests (PGlite + FakeDiscordGateway from tickets-core port)
 │   ├── shared/                    # 양 앱 공용 타입/zod/상수 (Result, AppError 계층)
 │   ├── tsconfig/                  # base.json, bot.json, web.json
 │   └── eslint-config/             # 공유 ESLint flat config
@@ -173,7 +180,9 @@ hearth/
 **불변 규칙:**
 
 - 티켓 도메인 로직은 `packages/tickets-core/`에만. 봇 / 대시보드 모두 여기서 import — 단일 진실의 원천.
-- `packages/tickets-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
+- Verification 도메인 로직은 `packages/verification-core/`에만 (DEFI-658). 자체 port를 만들지 않고 `tickets-core`의 `DiscordGateway` port를 재사용한다 — port는 봇 ↔ 도메인 seam이고 봇은 한 개. 단방향 의존 (verification-core → tickets-core).
+- 신규 도메인 패키지(`@hearth/<domain>-core`) 추가 시 같은 form factor: services + builder + schemas + i18n + tests, **discord.js 런타임 의존 0**, tickets-core의 DiscordGateway port 재사용 (필요 시 메서드 추가). 자체 customId action은 `tickets-core/src/lib/customId.ts` 레지스트리에 등록.
+- `packages/tickets-core/`와 `packages/verification-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
 - **Client component (`'use client'`)는 `@hearth/tickets-core` 배럴 대신 `@hearth/tickets-core/schemas` subpath만 import.** 배럴은 services를 통해 `@hearth/database` → `pg` → `node:dns/net/tls`까지 끌고 와서 webpack이 client bundle에 못 넣음. schema 모듈만 별도 entry로 노출됨. 서버측 (Server Actions / RSC) 코드는 배럴 그대로 OK.
 - **Server Action `err(...)` 인자는 plain `ActionError { code, message }` 만.** AppError 클래스 인스턴스는 React Flight 직렬화에서 `$Z` placeholder + redacted 메시지로 전락 — 클라이언트가 우리 카피 못 봄. 봇 내부 로직은 AppError 그대로 (타입 이점). dashboard action 경계에서만 변환 (`@hearth/shared`의 `ActionError` / `toActionError`).
 - **Layout/middleware의 `redirect()`는 certain failure에서만.** Discord 같은 외부 호출 일시 실패에 redirect를 걸면 Next.js 15의 client router cache가 그 redirect-payload를 캐시해서 reload 전엔 안 풀림 → 무한 루프. transient 실패는 fail-open + last-known-good fallback (`fetchUserGuilds`의 stale cache 패턴 참조).
@@ -226,6 +235,7 @@ hearth/
 - 버튼/SelectMenu 기반 role menu (reaction roles는 레거시, 미지원)
 - Exclusivity: none/single/multi (min~max)
 - Welcome: 채널 + DM, 변수 치환 (`{user}`, `{server}`, `{membercount}`), autorole
+- ✅ **Verification panel (DEFI-658)** — 1 panel = ≤5 emoji 버튼, 1 정답 → 1 role 부여. button 패턴 (reaction은 레거시 결정 그대로). audit log (`VerificationEvent`)에 outcome (success/wrong_answer/already_verified/role_assign_failed) 기록. dashboard 풀 CRUD + 운영자 슬래시 9 subcommands.
 
 ### Phase 4 — Leveling + Logging (D+22~30)
 
@@ -252,6 +262,7 @@ Custom commands, reminders, giveaways, polls (native API), feeds (YouTube/Twitch
 - ❌ Discord.js 객체를 service 메서드 1차 인자로 — primitive (id, content) 만 받기
 - ❌ Components V2 message flag (32768) 사용 — v1에선 레거시 embeds만
 - ❌ 음악 기능 추가 — 범위 밖
+- ❌ Discord에 role assign 시도 시 `gateway.assignRoleToMember()` 결과 처리 누락 — `DiscordApiError` 50013(Manage Roles 누락) / 50001(role hierarchy 위반) 등을 잡아 graceful outcome으로 매핑해야 함. verification-core의 `handleSubmission`이 표준 패턴 (`role_assign_failed` outcome + audit log).
 - ❌ `git commit --no-verify`, `--amend` 후 push — 항상 새 커밋
 - ❌ `Co-Authored-By: Claude` 태그 — Daniel 글로벌 규칙
 - ❌ **토큰/시크릿 커밋 금지** — `DISCORD_TOKEN`, `DISCORD_CLIENT_SECRET`, `DATABASE_URL`(비밀번호 포함), GCP 서비스 키, Sentry DSN, 그 외 모든 자격증명. **이 레포는 PUBLIC**이라 한 번이라도 커밋되면 git history에서 영구 노출됨. `.env*`는 모두 `.gitignore`에, `.env.example`만 placeholder 값으로 커밋. 의심스러우면 커밋 전에 반드시 `git diff --staged | grep -iE "(token|secret|key|password|dsn)"` 체크.
@@ -407,6 +418,21 @@ infra/
 ---
 
 ## 8. 진행 상황
+
+**현재 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
+
+- ✅ **DEFI-658 Verification Module** — Discord 인증 봇 + 어드민 페이지. 5 PR 누적 ~3,500 LOC. Linear 티켓 [DEFI-658](https://linear.app/chiliz-defi/issue/DEFI-658), due 2026-05-14, 5 points. button 패턴 채택 (CLAUDE.md §4 Phase 3 결정 준수). 다음 self-roles / welcome 모듈도 같은 form factor.
+
+| #    | PR  | 제목                                                             | LOC         | 1줄                                                                                           |
+| ---- | --- | ---------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| PR-1 | #10 | `feat(db): verification schema + drizzle migration`              | +250 / -0   | 3 schema 파일 (VerificationPanel/Option/Event) + 0001_verification.sql. app import 0          |
+| PR-2 | #11 | `feat(core): verification-core package + gateway port extension` | +800 / -30  | `@hearth/verification-core` 신규 + tickets-core port 5 메서드 추가. 41 unit (PGlite + FakeGw) |
+| PR-3 | #12 | `feat(verification): bot slash + button handler + internal api`  | +900 / -50  | DjsGateway 5 구현 + 9 slash subcommands + verification-submit handler + 3 internal routes     |
+| PR-4 | #13 | `feat(verification): dashboard CRUD pages + actions`             | +1500 / -50 | 6 RSC pages + 2 server-action 파일 + 8 components + RolePicker 신규. 22 unit                  |
+| PR-5 | #14 | `chore(verification): Manage Roles scope + 3-place doc sync`     | +250 / -50  | runbook (Manage Roles + role hierarchy 가이드) + CLAUDE.md/memory/vault 3-place sync          |
+
+- ✅ **테스트 누계 (DEFI-658 후)**: tickets-core 101 + verification-core 41 + bot 31 + dashboard 80 + integration 5 = **258 green** (1차 MVP 195 → 258, +63)
+- 🚧 **운영 길드에 Manage Roles 권한 부여** (수동 step) — Discord Developer Portal에서 봇 권한 비트에 Manage Roles 추가, 기존 길드는 invite URL re-issue 또는 Server Settings → Roles → 봇 role → Permissions에서 수동 부여. `docs/runbook/03-pre-deploy-checklist.md`에 안내.
 
 **현재 상태 (2026-05-01 — 1차 MVP ✅ 완료, 1차 서빙 GO):**
 

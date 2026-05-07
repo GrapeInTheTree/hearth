@@ -29,6 +29,17 @@ that catches a class of misconfiguration. The full deploy flow lives in
       `docs/architecture/`'s invite scope notes (Manage Channels, Manage
       Roles, Send Messages, Embed Links, Use Slash Commands, View Audit
       Log for delete events).
+  - **Manage Roles** is required for the verification feature
+    (DEFI-658) — the bot grants the configured role on a correct
+    submission. If you skipped it on a previous invite, re-issue the
+    bot invite URL or have an admin grant the bot's role this
+    permission via Server Settings → Roles → (bot role) → Permissions.
+  - **Role hierarchy**: the bot's own role must sit _above_ every role
+    it's expected to assign in the server's role list (Server Settings
+    → Roles → drag the bot role up). Discord rejects assignments to
+    roles at-or-above the bot's position with HTTP 403 / code 50013;
+    the verification service surfaces this as
+    `role_assign_failed` outcome to the user and logs the event.
 - [ ] `Server Members Intent` is **enabled** under
       `Bot → Privileged Gateway Intents`.
 
