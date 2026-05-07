@@ -14,6 +14,7 @@ export default {
         'welcome',
         'logging',
         'automod',
+        'verification',
         // technical scopes
         'core',
         'config',

@@ -5,6 +5,7 @@ import {
   TicketService,
   type DiscordGateway,
 } from '@hearth/tickets-core';
+import { VerificationService } from '@hearth/verification-core';
 import { container } from '@sapphire/framework';
 
 import { branding, type Branding } from './config/branding.js';
@@ -14,6 +15,7 @@ export interface Services {
   readonly guildConfig: GuildConfigService;
   readonly panel: PanelService;
   readonly ticket: TicketService;
+  readonly verification: VerificationService;
 }
 
 declare module '@sapphire/pieces' {
@@ -47,5 +49,6 @@ export function attachServices(gateway: DiscordGateway): void {
   const guildConfig = new GuildConfigService(dbDrizzle);
   const panel = new PanelService(dbDrizzle, gateway, branding);
   const ticket = new TicketService(dbDrizzle, gateway, branding, guildConfig, panel);
-  container.services = { guildConfig, panel, ticket };
+  const verification = new VerificationService(dbDrizzle, gateway, branding);
+  container.services = { guildConfig, panel, ticket, verification };
 }

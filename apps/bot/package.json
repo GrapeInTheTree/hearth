@@ -22,6 +22,7 @@
     "@hearth/database": "workspace:*",
     "@hearth/shared": "workspace:*",
     "@hearth/tickets-core": "workspace:*",
+    "@hearth/verification-core": "workspace:*",
     "@sapphire/framework": "5.5.0",
     "@sapphire/pieces": "4.4.1",
     "@sapphire/plugin-logger": "4.0.2",

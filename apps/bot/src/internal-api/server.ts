@@ -6,6 +6,11 @@ import { handleGuildResources, handleGuildsList } from './routes/guilds.js';
 import { handleHealthz } from './routes/healthz.js';
 import { handlePanelDelete, handlePanelRender, handlePanelRepost } from './routes/panels.js';
 import { handleResolve } from './routes/resolve.js';
+import {
+  handleVerificationDelete,
+  handleVerificationRender,
+  handleVerificationRepost,
+} from './routes/verifications.js';
 import type { InternalApiContext } from './types.js';
 
 export interface StartInternalApiOptions {
@@ -83,6 +88,35 @@ function matchRoute(
   }
   if (method === 'POST' && pathname === '/internal/resolve') {
     return { requireAuth: true, handle: async () => handleResolve(ctx, req, res) };
+  }
+
+  // ── verification (DEFI-658) ──
+  const verificationRenderMatch = /^\/internal\/verifications\/([^/]+)\/render$/.exec(pathname);
+  if (method === 'POST' && verificationRenderMatch !== null) {
+    const [, panelId] = verificationRenderMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleVerificationRender(ctx, panelId, res),
+    };
+  }
+  const verificationRepostMatch = /^\/internal\/verifications\/([^/]+)\/repost$/.exec(pathname);
+  if (method === 'POST' && verificationRepostMatch !== null) {
+    const [, panelId] = verificationRepostMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleVerificationRepost(ctx, panelId, res),
+    };
+  }
+  const verificationDeleteMatch = /^\/internal\/verifications\/([^/]+)$/.exec(pathname);
+  if (method === 'DELETE' && verificationDeleteMatch !== null) {
+    const [, panelId] = verificationDeleteMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleVerificationDelete(ctx, panelId, res),
+    };
   }
 
   return null;

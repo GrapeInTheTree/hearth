@@ -53,6 +53,9 @@ importers:
       '@hearth/tickets-core':
         specifier: workspace:*
         version: link:../../packages/tickets-core
+      '@hearth/verification-core':
+        specifier: workspace:*
+        version: link:../../packages/verification-core
       '@sapphire/framework':
         specifier: 5.5.0
         version: 5.5.0

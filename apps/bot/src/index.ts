@@ -90,6 +90,7 @@ try {
       client,
       db: dbDrizzle,
       panel: diContainer.services.panel,
+      verification: diContainer.services.verification,
       branding,
       isReady: () => client.isReady(),
     },
