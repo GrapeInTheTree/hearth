@@ -20,6 +20,16 @@ export interface PanelMessagePayload {
   readonly components: readonly unknown[];
 }
 
+// Verification messages share the same shape as panels (embed + button row)
+// — keeping them as a distinct type makes intent obvious at call sites and
+// leaves room to diverge later (e.g. ephemeral hint embeds for verification
+// only) without rippling through panel code.
+export interface VerificationMessagePayload {
+  readonly content: string | undefined;
+  readonly embeds: readonly APIEmbed[];
+  readonly components: readonly unknown[];
+}
+
 export interface ModlogEmbed {
   readonly title: string;
   readonly fields: readonly {
@@ -97,4 +107,37 @@ export interface DiscordGateway {
 
   /** Resolve a member's display name for system messages. Returns id-string fallback if not cached. */
   resolveMemberDisplay(guildId: string, userId: string): Promise<string>;
+
+  // ─── Verification (DEFI-658) ──────────────────────────────────────────
+  // Same lifecycle shape as panel messages but kept as separate methods
+  // so the bot's djs gateway can log/observe verification activity
+  // distinctly and so future verification-only behaviour (e.g. hint
+  // embeds, ephemeral confirmations) can be added without touching panels.
+
+  /** Send a verification message to a public channel. */
+  sendVerificationMessage(
+    channelId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<{ messageId: string }>;
+
+  /** Edit an existing verification message — used after option add/edit/remove. */
+  editVerificationMessage(
+    channelId: string,
+    messageId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<void>;
+
+  /** Hard-delete a verification message. Best-effort — silently swallows
+   *  already-gone messages so the caller doesn't have to branch on 404. */
+  deleteVerificationMessage(channelId: string, messageId: string): Promise<void>;
+
+  /** Grant a role to a guild member. Throws DiscordApiError on Manage Roles
+   *  missing, role hierarchy violation, or member fetch failure — the
+   *  service layer catches and maps to a 'role_assign_failed' outcome. */
+  assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void>;
+
+  /** Test whether a guild member already holds a role. Used to short-circuit
+   *  re-clicks of a correct verification button into an "already verified"
+   *  outcome rather than a redundant Discord write. */
+  memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean>;
 }

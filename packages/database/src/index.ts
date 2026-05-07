@@ -12,6 +12,10 @@ export {
   type TicketEvent,
   type TicketEventMetadata,
   TicketStatus,
+  type VerificationEvent,
+  VerificationOutcome,
+  type VerificationOption,
+  type VerificationPanel,
 } from './types.js';
 export { TicketStatusValues } from './schema/_enums.js';
 export { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';

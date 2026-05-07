@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 import { SnowflakeSchema } from './lib/snowflake.js';
 
+// Re-export so sibling domain packages (e.g. @hearth/verification-core)
+// can import shared zod primitives via `@hearth/tickets-core/schemas`
+// without dragging the rest of the barrel — keeps the dashboard client
+// bundle clean (no transitive pull of @hearth/database).
+export { SnowflakeSchema } from './lib/snowflake.js';
+
 // Validation schemas shared between forms (dashboard) and slash command
 // option parsers (bot). Keep field constraints in this single file so
 // invariants don't drift between input surfaces.

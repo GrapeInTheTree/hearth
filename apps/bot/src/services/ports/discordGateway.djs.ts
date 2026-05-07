@@ -5,6 +5,7 @@ import type {
   ModlogEmbed,
   PanelMessagePayload,
   SendWelcomeMessageInput,
+  VerificationMessagePayload,
   WelcomeMessagePayload,
 } from '@hearth/tickets-core';
 import {
@@ -209,6 +210,63 @@ export class DjsDiscordGateway implements DiscordGateway {
       const guild = await this.client.guilds.fetch(guildId);
       const member = await guild.members.fetch(userId).catch(() => null);
       return member?.displayName ?? userId;
+    });
+  }
+
+  // ─── Verification (DEFI-658) ──────────────────────────────────────────
+
+  public async sendVerificationMessage(
+    channelId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<{ messageId: string }> {
+    return await this.wrap('sendVerificationMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      const message = await channel.send({
+        ...(payload.content !== undefined ? { content: payload.content } : {}),
+        embeds: payload.embeds as APIEmbed[],
+        components: payload.components as never,
+      });
+      return { messageId: message.id };
+    });
+  }
+
+  public async editVerificationMessage(
+    channelId: string,
+    messageId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<void> {
+    await this.wrap('editVerificationMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      const message = await channel.messages.fetch(messageId);
+      await message.edit({
+        ...(payload.content !== undefined ? { content: payload.content } : {}),
+        embeds: payload.embeds as APIEmbed[],
+        components: payload.components as never,
+      });
+    });
+  }
+
+  public async deleteVerificationMessage(channelId: string, messageId: string): Promise<void> {
+    await this.wrap('deleteVerificationMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      // Swallow 404 / 10008 — operator may have removed the message manually.
+      await channel.messages.delete(messageId).catch(() => undefined);
+    });
+  }
+
+  public async assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void> {
+    await this.wrap('assignRoleToMember', async () => {
+      const guild = await this.client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(userId);
+      await member.roles.add(roleId);
+    });
+  }
+
+  public async memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean> {
+    return await this.wrap('memberHasRole', async () => {
+      const guild = await this.client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(userId);
+      return member.roles.cache.has(roleId);
     });
   }
 

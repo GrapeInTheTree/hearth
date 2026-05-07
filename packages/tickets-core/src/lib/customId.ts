@@ -7,19 +7,25 @@ import { z } from 'zod';
 const CUSTOM_ID_LIMIT = 100;
 
 // Valid action keys. Adding a new action means updating this union AND the
-// PayloadSchemas registry below.
+// PayloadSchemas registry below. Cross-domain registry (verification lives
+// alongside panel/ticket) — keeps customId encoding/decoding centralised so
+// no two domains can collide on a prefix.
 export type CustomIdAction =
   | 'panel:open'
   | 'ticket:claim'
   | 'ticket:close'
   | 'ticket:reopen'
   | 'ticket:delete'
-  | 'ticket:delete-confirm';
+  | 'ticket:delete-confirm'
+  | 'verification:submit';
 
 const PanelOpenPayload = z
   .object({ panelId: z.string().min(1), typeId: z.string().min(1) })
   .strict();
 const TicketActionPayload = z.object({ ticketId: z.string().min(1) }).strict();
+const VerificationSubmitPayload = z
+  .object({ panelId: z.string().min(1), optionId: z.string().min(1) })
+  .strict();
 
 // Registry maps action → its payload schema. Decoders use this to validate
 // the incoming JSON; encoders rely on TypeScript's structural matching.
@@ -30,6 +36,7 @@ const PayloadSchemas = {
   'ticket:reopen': TicketActionPayload,
   'ticket:delete': TicketActionPayload,
   'ticket:delete-confirm': TicketActionPayload,
+  'verification:submit': VerificationSubmitPayload,
 } as const satisfies Record<CustomIdAction, z.ZodType>;
 
 export type CustomIdPayloadFor<A extends CustomIdAction> = z.infer<(typeof PayloadSchemas)[A]>;

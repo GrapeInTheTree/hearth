@@ -12,6 +12,9 @@ export type Panel = InferSelectModel<typeof schema.panel>;
 export type PanelTicketType = InferSelectModel<typeof schema.panelTicketType>;
 export type Ticket = InferSelectModel<typeof schema.ticket>;
 export type TicketEvent = InferSelectModel<typeof schema.ticketEvent>;
+export type VerificationPanel = InferSelectModel<typeof schema.verificationPanel>;
+export type VerificationOption = InferSelectModel<typeof schema.verificationOption>;
+export type VerificationEvent = InferSelectModel<typeof schema.verificationEvent>;
 
 // TicketEvent.metadata holds an arbitrary JSON object (column is `jsonb`,
 // nullable). Existing prod rows mix shapes per event type — opened events
@@ -31,3 +34,14 @@ export const TicketStatus = {
   closed: 'closed',
 } as const;
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+
+// Outcome of a single button click on a verification panel. Stored as text
+// in VerificationEvent.outcome; centralised here so service code, the bot
+// interaction handler, and the dashboard all reach for the same constants.
+export const VerificationOutcome = {
+  success: 'success',
+  wrongAnswer: 'wrong_answer',
+  alreadyVerified: 'already_verified',
+  roleAssignFailed: 'role_assign_failed',
+} as const;
+export type VerificationOutcome = (typeof VerificationOutcome)[keyof typeof VerificationOutcome];

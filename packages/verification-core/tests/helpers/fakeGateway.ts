@@ -1,4 +1,4 @@
-import type { WelcomeMessagePayload } from '../../src/lib/welcomeBuilder.js';
+import { DiscordApiError } from '@hearth/shared';
 import type {
   CreateTicketChannelInput,
   DiscordGateway,
@@ -6,7 +6,19 @@ import type {
   PanelMessagePayload,
   SendWelcomeMessageInput,
   VerificationMessagePayload,
-} from '../../src/ports/discordGateway.js';
+} from '@hearth/tickets-core';
+
+// In-memory DiscordGateway double — mirrors the helper in
+// @hearth/tickets-core/tests but exposed here so verification-core's unit
+// tests can import without crossing package private/test boundaries.
+// Records every call so assertions can verify side-effect order, and
+// honours an optional `throwOn` set + a `failRoleAssignWithDiscordError`
+// flag for the role-assign failure path.
+
+// Loose shape — verification doesn't drive welcome messages, but the port
+// requires the type, so we relay through Record<string, unknown> to avoid
+// pulling welcomeBuilder types into this fake.
+type WelcomeMessagePayloadShape = Record<string, unknown>;
 
 export interface FakeGatewayCall {
   readonly op: string;
@@ -14,26 +26,20 @@ export interface FakeGatewayCall {
 }
 
 export interface FakeGatewayOptions {
-  readonly channelChildren?: number;
   readonly nextChannelId?: () => string;
   readonly nextMessageId?: () => string;
   readonly throwOn?: ReadonlySet<string>;
-  /** Member→role membership snapshot used by `memberHasRole`. Key format:
-   *  `<guildId>:<userId>:<roleId>`. Defaults to "no membership". */
+  /** Member→role membership snapshot. Key: `<guildId>:<userId>:<roleId>`. */
   readonly memberRoles?: ReadonlySet<string>;
+  /** When true, assignRoleToMember rejects with a DiscordApiError simulating
+   *  a 50013 (Missing Permissions) so the service maps to 'role_assign_failed'. */
+  readonly failRoleAssignAsDiscordError?: boolean;
 }
 
-/**
- * In-memory DiscordGateway double for unit tests. Records every call so
- * assertions can verify that services drive Discord side effects in the
- * right order with the right arguments.
- */
 export class FakeDiscordGateway implements DiscordGateway {
   public readonly calls: FakeGatewayCall[] = [];
   private channelCounter = 0;
   private messageCounter = 0;
-  // Tracks roles granted via assignRoleToMember during this fake's lifetime.
-  // Combined with the seed in `options.memberRoles` to answer memberHasRole.
   private readonly grantedRoles = new Set<string>();
 
   public constructor(private readonly options: FakeGatewayOptions = {}) {}
@@ -57,7 +63,7 @@ export class FakeDiscordGateway implements DiscordGateway {
   public editWelcomeMessage(
     channelId: string,
     messageId: string,
-    payload: WelcomeMessagePayload,
+    payload: WelcomeMessagePayloadShape,
   ): Promise<void> {
     this.record('editWelcomeMessage', { channelId, messageId, payload });
     this.maybeThrow('editWelcomeMessage');
@@ -85,7 +91,7 @@ export class FakeDiscordGateway implements DiscordGateway {
   public countCategoryChildren(categoryId: string): Promise<number> {
     this.record('countCategoryChildren', { categoryId });
     this.maybeThrow('countCategoryChildren');
-    return Promise.resolve(this.options.channelChildren ?? 0);
+    return Promise.resolve(0);
   }
 
   public deleteChannel(channelId: string, reason: string): Promise<void> {
@@ -161,9 +167,9 @@ export class FakeDiscordGateway implements DiscordGateway {
   public assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void> {
     this.record('assignRoleToMember', { guildId, userId, roleId });
     this.maybeThrow('assignRoleToMember');
-    // Reflect the assignment in the membership snapshot so subsequent
-    // memberHasRole calls observe the new state. Treats the seeded set as
-    // mutable for tests that need to replay verification flows.
+    if (this.options.failRoleAssignAsDiscordError === true) {
+      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
+    }
     this.grantedRoles.add(membershipKey(guildId, userId, roleId));
     return Promise.resolve();
   }
@@ -181,11 +187,6 @@ export class FakeDiscordGateway implements DiscordGateway {
   }
 
   public reset(): void {
-    // Only clear call history. The channel/message counters keep
-    // climbing monotonically so cross-test channelId/messageId
-    // collisions can't happen — the integration tests share a single
-    // DB across cases and would otherwise hit Ticket_channelId_key
-    // when reset wound the counter back to 1.
     this.calls.length = 0;
   }
 
