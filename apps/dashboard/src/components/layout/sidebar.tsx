@@ -11,15 +11,38 @@ interface NavItem {
   readonly href: string;
   readonly label: () => string;
   readonly icon: typeof LayoutDashboard;
+  /** When true, only `activePath === href` highlights it (use for "/" overview). */
   readonly exact?: boolean;
 }
 
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: '', label: () => t.nav.overview, icon: LayoutDashboard, exact: true },
-  { href: '/panels', label: () => t.nav.panels, icon: Tag },
-  { href: '/tickets', label: () => t.nav.tickets, icon: Inbox },
-  { href: '/verification', label: () => t.nav.verification, icon: ShieldCheck },
-  { href: '/settings', label: () => t.nav.settings, icon: Settings },
+interface NavSection {
+  /** Optional uppercase section header. Overview-style top items use undefined. */
+  readonly header?: () => string;
+  readonly items: readonly NavItem[];
+}
+
+// Sidebar IA — sections + items. Adding a new domain (self-roles, welcome,
+// moderation, …) means dropping a NavItem into the right section. The
+// indentation + section header carry the "this is a feature group" signal,
+// so individual labels stay short ("Tickets" rather than "Ticket
+// Conversations"). Sections themselves are not collapsible — there are
+// only 5–10 items expected long-term, well within scrollable single-pane.
+const NAV_SECTIONS: readonly NavSection[] = [
+  {
+    items: [{ href: '', label: () => t.nav.overview, icon: LayoutDashboard, exact: true }],
+  },
+  {
+    header: () => t.nav.sectionWorkspace,
+    items: [
+      { href: '/panels', label: () => t.nav.panels, icon: Tag },
+      { href: '/tickets', label: () => t.nav.tickets, icon: Inbox },
+      { href: '/verification', label: () => t.nav.verification, icon: ShieldCheck },
+    ],
+  },
+  {
+    header: () => t.nav.sectionAccount,
+    items: [{ href: '/settings', label: () => t.nav.settings, icon: Settings }],
+  },
 ];
 
 interface SidebarProps {
@@ -69,28 +92,39 @@ export function Sidebar({ guildId, brandName, brandIconUrl }: SidebarProps): Rea
           <span className="font-semibold tracking-tight">{brandName}</span>
         </Link>
       </div>
-      <nav className="flex-1 px-3 py-6" aria-label="Primary">
-        <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon, exact = false }) => {
-            const isActive = exact ? activePath === '' : activePath.startsWith(href);
-            return (
-              <li key={href === '' ? 'overview' : href}>
-                <Link
-                  href={`${base}${href}`}
-                  className={cn(
-                    'flex items-center gap-3 rounded-[var(--radius)] px-3 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)]',
-                    isActive
-                      ? 'bg-[color:var(--color-bg-subtle)] text-[color:var(--color-fg)]'
-                      : 'text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)]',
-                  )}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  {label()}
-                </Link>
-              </li>
-            );
-          })}
+      <nav className="flex-1 overflow-y-auto px-3 py-6" aria-label="Primary">
+        <ul className="flex flex-col gap-6">
+          {NAV_SECTIONS.map((section, sectionIdx) => (
+            <li key={sectionIdx}>
+              {section.header !== undefined ? (
+                <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--color-fg-muted)]">
+                  {section.header()}
+                </p>
+              ) : null}
+              <ul className="flex flex-col gap-0.5">
+                {section.items.map(({ href, label, icon: Icon, exact = false }) => {
+                  const isActive = exact ? activePath === '' : activePath.startsWith(href);
+                  return (
+                    <li key={href === '' ? 'overview' : href}>
+                      <Link
+                        href={`${base}${href}`}
+                        className={cn(
+                          'flex items-center gap-3 rounded-[var(--radius)] px-3 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)]',
+                          isActive
+                            ? 'bg-[color:var(--color-bg-subtle)] text-[color:var(--color-fg)]'
+                            : 'text-[color:var(--color-fg-muted)] hover:bg-[color:var(--color-bg-subtle)] hover:text-[color:var(--color-fg)]',
+                        )}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{label()}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ))}
         </ul>
       </nav>
     </aside>

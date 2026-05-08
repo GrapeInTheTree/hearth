@@ -4,7 +4,7 @@ import { sendError, sendJson } from '../json.js';
 import type { InternalApiContext } from '../types.js';
 
 // Resolves a batch of Discord IDs to display names. Used by the
-// dashboard's tickets pages to show readable usernames + channel names
+// dashboard to show readable usernames / channel names / role names
 // instead of raw snowflakes.
 //
 // Strategy:
@@ -12,6 +12,9 @@ import type { InternalApiContext } from '../types.js';
 //     lifetime of the gateway connection — REST fetch isn't worth the
 //     latency for a list view. If a channel is missing (deleted), the
 //     dashboard falls back to the ID.
+//   - Roles: per-guild cache. We need the guild context (roles aren't
+//     in a global cache) so the dashboard sends roleIds grouped by
+//     guildId. Same cache-only pattern as channels.
 //   - Users: cache first, then REST fallback. The user cache is sweept
 //     aggressively (especially after restarts), so a list of 50 ticket
 //     openers will frequently have cache misses. discord.js's
@@ -23,11 +26,16 @@ import type { InternalApiContext } from '../types.js';
 export interface ResolveRequest {
   readonly userIds?: readonly string[];
   readonly channelIds?: readonly string[];
+  /** Role IDs scoped to a specific guild — roles are guild-local. */
+  readonly guildId?: string;
+  readonly roleIds?: readonly string[];
 }
 
 export interface ResolveResponse {
   readonly users: Record<string, { username: string; avatarHash: string | null }>;
   readonly channels: Record<string, { name: string }>;
+  /** Role display name + Discord int color (0 = no color). */
+  readonly roles: Record<string, { name: string; color: number }>;
 }
 
 export async function handleResolve(
@@ -46,6 +54,10 @@ export async function handleResolve(
   const channelIds = Array.isArray(body.channelIds)
     ? body.channelIds.filter((s): s is string => typeof s === 'string')
     : [];
+  const roleIds = Array.isArray(body.roleIds)
+    ? body.roleIds.filter((s): s is string => typeof s === 'string')
+    : [];
+  const guildId = typeof body.guildId === 'string' ? body.guildId : undefined;
 
   const users: ResolveResponse['users'] = {};
   await Promise.all(
@@ -71,7 +83,23 @@ export async function handleResolve(
       channels[id] = { name: channel.name };
     }
   }
-  sendJson(res, 200, { users, channels });
+  const roles: ResolveResponse['roles'] = {};
+  if (guildId !== undefined && roleIds.length > 0) {
+    const guild = ctx.client.guilds.cache.get(guildId);
+    if (guild !== undefined) {
+      for (const id of roleIds) {
+        const role = guild.roles.cache.get(id);
+        if (role !== undefined) {
+          // Discord introduced multi-colored roles in 2026; we only
+          // surface the primary color since the dashboard renders a
+          // single dot indicator. Server admins still see the full
+          // palette in Discord itself.
+          roles[id] = { name: role.name, color: role.colors.primaryColor };
+        }
+      }
+    }
+  }
+  sendJson(res, 200, { users, channels, roles });
 }
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown> | null> {

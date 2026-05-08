@@ -15,3 +15,18 @@ export interface GuildResources {
   readonly categories: readonly { id: string; name: string }[];
   readonly roles: readonly { id: string; name: string; color: number; managed: boolean }[];
 }
+
+/**
+ * Response shape for `POST /internal/resolve` — batch ID → display-name
+ * lookup. Keys are the requested IDs. Missing keys mean the bot couldn't
+ * resolve (cache miss + REST 404 / rate limit / role not in guild) — the
+ * caller should fall back to showing the raw ID.
+ *
+ * `roles` requires `guildId` in the request body since roles are guild-
+ * scoped (no global cache).
+ */
+export interface ResolveResponse {
+  readonly users: Record<string, { username: string; avatarHash: string | null }>;
+  readonly channels: Record<string, { name: string }>;
+  readonly roles: Record<string, { name: string; color: number }>;
+}

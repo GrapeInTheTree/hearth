@@ -13,9 +13,16 @@ import { SetCorrectControl } from '@/components/verification/set-correct-control
 import { VerificationPreview } from '@/components/verification/verification-preview';
 import { branding } from '@/config/branding';
 import { auth } from '@/lib/auth';
+import { callBot } from '@/lib/botClient';
+import type { ResolveResponse } from '@/types/bot';
 
 interface VerificationDetailPageProps {
   readonly params: Promise<{ readonly guildId: string; readonly panelId: string }>;
+}
+
+function roleColorToCss(color: number): string {
+  if (color === 0) return 'var(--color-fg-muted)';
+  return `#${color.toString(16).padStart(6, '0')}`;
 }
 
 export default async function VerificationDetailPage({
@@ -31,6 +38,16 @@ export default async function VerificationDetailPage({
   });
   if (panel === undefined || panel.guildId !== guildId) notFound();
 
+  // Resolve the panel's channel + role IDs to display names. One round-trip,
+  // both fall back gracefully to the raw ID on cache miss.
+  const resolved = await callBot<ResolveResponse>({
+    path: '/internal/resolve',
+    method: 'POST',
+    body: { channelIds: [panel.channelId], roleIds: [panel.roleId], guildId },
+  });
+  const channelName = resolved.ok ? resolved.value.channels[panel.channelId]?.name : undefined;
+  const role = resolved.ok ? resolved.value.roles[panel.roleId] : undefined;
+
   const avatarUrl =
     session.user.avatarHash !== null
       ? `https://cdn.discordapp.com/avatars/${session.user.discordId}/${session.user.avatarHash}.webp?size=128`
@@ -41,13 +58,15 @@ export default async function VerificationDetailPage({
       ? null
       : (panel.options.find((o) => o.id === panel.correctOptionId) ?? null);
 
+  const description = `#${channelName ?? panel.channelId} · @${role?.name ?? panel.roleId} · ${String(panel.options.length)} option${panel.options.length === 1 ? '' : 's'}`;
+
   return (
     <>
       <Topbar
         username={session.user.username}
         avatarUrl={avatarUrl}
         title={panel.embedTitle}
-        description={`#${panel.channelId} · ${panel.options.length} option${panel.options.length === 1 ? '' : 's'} · grants role ${panel.roleId}`}
+        description={description}
         action={
           <div className="flex items-center gap-2">
             {!isStale ? <RepostVerificationButton guildId={guildId} panelId={panelId} /> : null}
@@ -168,10 +187,31 @@ export default async function VerificationDetailPage({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Correct option</CardTitle>
-              <CardDescription>
-                {correctOption !== null
-                  ? `Currently: ${correctOption.emoji !== '' ? `${correctOption.emoji} ` : ''}${correctOption.label}`
-                  : 'No option marked correct yet.'}
+              <CardDescription className="flex items-center gap-2">
+                {correctOption !== null ? (
+                  <>
+                    <span>Currently:</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-subtle)] px-2 py-0.5 text-xs font-medium text-[color:var(--color-fg)]">
+                      {correctOption.emoji !== '' ? (
+                        <span aria-hidden="true">{correctOption.emoji}</span>
+                      ) : null}
+                      <span>{correctOption.label}</span>
+                    </span>
+                    <span>
+                      grants{' '}
+                      <span className="inline-flex items-center gap-1 text-[color:var(--color-fg)]">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: roleColorToCss(role?.color ?? 0) }}
+                          aria-hidden="true"
+                        />
+                        @{role?.name ?? panel.roleId}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  <span>No option marked correct yet.</span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
