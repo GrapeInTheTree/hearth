@@ -28,14 +28,38 @@ export const en = {
   },
   overview: {
     title: 'Overview',
+    description: 'A quick glance at this server.',
     counts: {
-      panels: 'Panels',
-      openTickets: 'Open tickets',
+      ticketPanels: 'Ticket panels',
+      openTickets: 'Active tickets',
       closedTickets: 'Closed tickets',
+      verificationPanels: 'Verification panels',
+      verifiedUsers: 'Verified users',
+    },
+    sections: {
+      activity: 'Recent activity',
+      activityEmpty: 'No activity yet — events show up here as they happen.',
+      quickStart: 'Get started',
+      quickStartHint:
+        'Empty server. Spin up your first ticket panel or verification gate to start tracking activity.',
+    },
+    activity: {
+      ticketOpened: 'Ticket #{number} opened',
+      ticketClaimed: 'Ticket #{number} claimed',
+      ticketClosed: 'Ticket #{number} closed',
+      ticketReopened: 'Ticket #{number} reopened',
+      ticketDeleted: 'Ticket #{number} deleted',
+      ticketChannelDeleted: 'Ticket #{number} channel removed externally',
+      verificationSuccess: 'New verified member',
+      verificationWrong: 'Wrong answer attempt',
+      verificationAlready: 'Re-clicked (already verified)',
+      verificationFailed: 'Role assign failed',
     },
     quickActions: {
-      newPanel: 'New panel',
+      newTicketPanel: 'New ticket panel',
+      newVerificationPanel: 'New verification panel',
       viewTickets: 'View tickets',
+      viewSettings: 'Settings',
     },
   },
   permissions: {
