@@ -19,10 +19,12 @@ export const en = {
   },
   nav: {
     overview: 'Overview',
-    panels: 'Panels',
+    panels: 'Ticket Panels',
     tickets: 'Tickets',
     verification: 'Verification',
     settings: 'Settings',
+    sectionWorkspace: 'Workspace',
+    sectionAccount: 'Account',
   },
   overview: {
     title: 'Overview',

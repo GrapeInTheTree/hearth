@@ -8,11 +8,7 @@ import { auth } from '@/lib/auth';
 import { callBot } from '@/lib/botClient';
 import { cn } from '@/lib/cn';
 import { relativeTime } from '@/lib/format';
-
-interface ResolveResponse {
-  readonly users: Record<string, { username: string; avatarHash: string | null }>;
-  readonly channels: Record<string, { name: string }>;
-}
+import type { ResolveResponse } from '@/types/bot';
 
 interface TicketsListPageProps {
   readonly params: Promise<{ readonly guildId: string }>;

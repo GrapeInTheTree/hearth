@@ -6,11 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { auth } from '@/lib/auth';
 import { callBot } from '@/lib/botClient';
 import { relativeTime } from '@/lib/format';
-
-interface ResolveResponse {
-  readonly users: Record<string, { username: string; avatarHash: string | null }>;
-  readonly channels: Record<string, { name: string }>;
-}
+import type { ResolveResponse } from '@/types/bot';
 
 interface TicketDetailPageProps {
   readonly params: Promise<{ readonly guildId: string; readonly ticketId: string }>;
