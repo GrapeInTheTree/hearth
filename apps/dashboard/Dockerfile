@@ -20,6 +20,7 @@ COPY apps/dashboard/package.json ./apps/dashboard/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY packages/tickets-core/package.json ./packages/tickets-core/
+COPY packages/verification-core/package.json ./packages/verification-core/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 
@@ -32,14 +33,17 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 # Copy sources
 COPY . .
 
-# Build chain: prisma client -> shared -> database -> tickets-core -> dashboard.
-# `next build` is the dashboard's build step; placeholder env vars come
-# from apps/dashboard/package.json's build script (the build evaluates
-# env validation but never reaches the network).
-RUN pnpm --filter @hearth/database run db:generate && \
+# Build chain: shared -> database -> tickets-core -> verification-core ->
+# dashboard. `db:generate` is a no-op since the Drizzle migration but
+# pnpm tolerates absent scripts. `next build` is the dashboard's build
+# step; placeholder env vars come from apps/dashboard/package.json's
+# build script (the build evaluates env validation but never reaches
+# the network).
+RUN pnpm --filter @hearth/database run db:generate; \
     pnpm --filter @hearth/shared run build && \
     pnpm --filter @hearth/database run build && \
     pnpm --filter @hearth/tickets-core run build && \
+    pnpm --filter @hearth/verification-core run build && \
     pnpm --filter @hearth/dashboard run build
 
 # ──────────────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ COPY apps/bot/package.json ./apps/bot/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY packages/tickets-core/package.json ./packages/tickets-core/
+COPY packages/verification-core/package.json ./packages/verification-core/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 
@@ -33,14 +34,15 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 COPY . .
 
 # Build chain: shared types first, then DB package (Drizzle schema +
-# migrate entry), then tickets-core (services), then the bot bundle.
-# The `db:generate` step (Prisma client) is still here because Prisma
-# is in package.json until PR-6; it's a build-only artifact never
-# loaded at runtime.
-RUN pnpm --filter @hearth/database run db:generate && \
+# migrate entry), then tickets-core (services), then verification-core
+# (DEFI-658 services + builder), then the bot bundle. `db:generate` is
+# a no-op leftover from the Prisma migration window — keeping the
+# tolerant `;` separator so absent scripts don't fail the chain.
+RUN pnpm --filter @hearth/database run db:generate; \
     pnpm --filter @hearth/shared run build && \
     pnpm --filter @hearth/database run build && \
     pnpm --filter @hearth/tickets-core run build && \
+    pnpm --filter @hearth/verification-core run build && \
     pnpm --filter @hearth/bot run build
 
 # Deploy bot with prod-only deps to /out. --legacy is required since
