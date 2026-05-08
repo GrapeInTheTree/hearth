@@ -432,7 +432,10 @@ infra/
 | PR-5 | #14 | `chore(verification): Manage Roles scope + 3-place doc sync`     | +250 / -50  | runbook (Manage Roles + role hierarchy 가이드) + CLAUDE.md/memory/vault 3-place sync          |
 
 - ✅ **테스트 누계 (DEFI-658 후)**: tickets-core 101 + verification-core 41 + bot 31 + dashboard 80 + integration 5 = **258 green** (1차 MVP 195 → 258, +63)
+- ✅ **Dashboard UX 오버홀** (2026-05-08, PR #18 `f380cf2`) — sidebar IA를 섹션-그룹 (`Overview` / `WORKSPACE: Ticket Panels, Tickets, Verification` / `ACCOUNT: Settings`)으로 재구성. "Panels" → "Ticket Panels" rename으로 verification 모듈과 단어 충돌 해소. `/internal/resolve` 확장 (`roleIds + guildId` → `roles {name, color}`, Discord 2026 multi-color API `Role.colors.primaryColor`). Verification list/detail 페이지가 raw snowflake 대신 `#channel` `@Role` (color dot) 표시. Verification preview에서 정답 옵션 baseline 정렬 fix (admin annotation을 embed 밖으로 분리 — preview = 실제 user view 100% 일치, 정답 노출 leak 차단).
+- ✅ **Overview 페이지 재설계** (2026-05-08, PR #19 `6a8e2a7`) — 3 카드 (panels/open/closed)에서 5 KPI grid (Ticket panels / Active tickets / Closed tickets / Verification panels / Verified users)로 확장. 각 카드 클릭 시 deep page link. "Verified users"는 `countDistinct(userId) WHERE outcome=success`로 unique user 카운트 (re-click 무시). Recent activity feed (combined ticket + verification events, top 8, per-outcome icon으로 scannable). Empty-state "Get started" 카드 (panel 0개일 때만, 3 CTA). 모든 데이터 단일 DB round trip — 봇 다운돼도 빠르게 렌더.
 - 🚧 **운영 길드에 Manage Roles 권한 부여** (수동 step) — Discord Developer Portal에서 봇 권한 비트에 Manage Roles 추가, 기존 길드는 invite URL re-issue 또는 Server Settings → Roles → 봇 role → Permissions에서 수동 부여. `docs/runbook/03-pre-deploy-checklist.md`에 안내.
+- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 아직 pre-DEFI-658 코드. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 verification 3 테이블 자동 생성, 다운타임 ~10s.
 
 **현재 상태 (2026-05-01 — 1차 MVP ✅ 완료, 1차 서빙 GO):**
 
