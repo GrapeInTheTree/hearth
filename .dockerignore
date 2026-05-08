@@ -1,0 +1,54 @@
+# Keep docker builds reproducible from source — never let host build
+# artifacts sneak into the image via `COPY . .`. The Dockerfile's
+# multi-stage chain is the only authoritative builder; if a package's
+# dist/ ends up in the image, it must come from that chain, not from
+# whatever the developer happened to run locally.
+#
+# Production lesson (2026-05-08): missing `pnpm --filter
+# @hearth/verification-core build` in the Dockerfile chain went
+# undetected for days because every developer's host `dist/` masked
+# the bug. Fresh `git clone` on the VM finally exposed it.
+
+# Build outputs — every workspace package emits these.
+**/dist/
+**/.next/
+**/.turbo/
+**/coverage/
+**/*.tsbuildinfo
+
+# Workspace install artefacts — pnpm reinstalls fresh inside the image.
+**/node_modules/
+
+# Local-only dotfiles + secrets.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/!.env.example
+
+# Editor / OS noise.
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Git metadata isn't needed for the build (Sentry release tracking
+# would consume it, but we don't run that in the Dockerfile).
+.git
+.gitignore
+.gitattributes
+
+# CI-only files.
+.github/
+
+# Test fixtures and transient runner state.
+**/*.test.ts.snap
+.lefthook-cache/
+
+# Documentation — not needed inside the runtime image. Drop only the
+# big trees; runbook docs are tiny but irrelevant to the bundle.
+docs/
+*.md
+!apps/bot/README.md
+!apps/dashboard/README.md
