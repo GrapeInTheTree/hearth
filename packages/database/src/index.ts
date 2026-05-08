@@ -18,7 +18,20 @@ export {
   type VerificationPanel,
 } from './types.js';
 export { TicketStatusValues } from './schema/_enums.js';
-export { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+export {
+  and,
+  asc,
+  count,
+  countDistinct,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 export {
   getConstraintName,
   isForeignKeyViolation,
