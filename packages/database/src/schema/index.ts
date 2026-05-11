@@ -15,3 +15,6 @@ export { ticketEvent, ticketEventRelations } from './ticketEvent.js';
 export { verificationPanel, verificationPanelRelations } from './verificationPanel.js';
 export { verificationOption, verificationOptionRelations } from './verificationOption.js';
 export { verificationEvent, verificationEventRelations } from './verificationEvent.js';
+export { selfRolesPanel, selfRolesPanelRelations } from './selfRolesPanel.js';
+export { selfRolesOption, selfRolesOptionRelations } from './selfRolesOption.js';
+export { selfRolesEvent, selfRolesEventRelations } from './selfRolesEvent.js';

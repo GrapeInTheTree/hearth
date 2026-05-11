@@ -15,6 +15,13 @@
       "when": 1778166887434,
       "tag": "0001_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778462717070,
+      "tag": "0002_self_roles",
+      "breakpoints": true
     }
   ]
 }
