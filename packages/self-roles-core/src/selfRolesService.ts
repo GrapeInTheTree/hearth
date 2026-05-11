@@ -538,9 +538,19 @@ export class SelfRolesService {
     }
     try {
       await this.gateway.editSelfRolesMessage(panel.channelId, panel.messageId, payload);
-      // Reactions already seeded on first send. Edit doesn't re-add them
-      // because they persist on the existing message — even if a single
-      // option was added later, the next repost will catch it up.
+      // Re-seed the reaction strip on every edit. discord.js's
+      // message.react is idempotent — Discord no-ops when the bot
+      // already has that reaction on the message — so re-adding the
+      // full set on each edit is the simplest way to surface a newly
+      // added option without forcing the operator into a destructive
+      // repost (which wipes existing user reactions). Orphan bot
+      // reactions left over from removed options are harmless: clicks
+      // miss the (panelId, emoji) lookup and audit nothing.
+      if (payload.reactions.length > 0) {
+        await this.gateway
+          .addMessageReactions(panel.channelId, panel.messageId, payload.reactions)
+          .catch(() => undefined);
+      }
       return { messageId: panel.messageId, recreated: false };
     } catch {
       // Live message gone — recreate.
