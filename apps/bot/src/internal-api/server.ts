@@ -7,6 +7,11 @@ import { handleHealthz } from './routes/healthz.js';
 import { handlePanelDelete, handlePanelRender, handlePanelRepost } from './routes/panels.js';
 import { handleResolve } from './routes/resolve.js';
 import {
+  handleSelfRolesDelete,
+  handleSelfRolesRender,
+  handleSelfRolesRepost,
+} from './routes/self-roles.js';
+import {
   handleVerificationDelete,
   handleVerificationRender,
   handleVerificationRepost,
@@ -116,6 +121,35 @@ function matchRoute(
     return {
       requireAuth: true,
       handle: async () => handleVerificationDelete(ctx, panelId, res),
+    };
+  }
+
+  // ── self-roles (DEFI-661) ──
+  const selfRolesRenderMatch = /^\/internal\/self-roles\/([^/]+)\/render$/.exec(pathname);
+  if (method === 'POST' && selfRolesRenderMatch !== null) {
+    const [, panelId] = selfRolesRenderMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleSelfRolesRender(ctx, panelId, res),
+    };
+  }
+  const selfRolesRepostMatch = /^\/internal\/self-roles\/([^/]+)\/repost$/.exec(pathname);
+  if (method === 'POST' && selfRolesRepostMatch !== null) {
+    const [, panelId] = selfRolesRepostMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleSelfRolesRepost(ctx, panelId, res),
+    };
+  }
+  const selfRolesDeleteMatch = /^\/internal\/self-roles\/([^/]+)$/.exec(pathname);
+  if (method === 'DELETE' && selfRolesDeleteMatch !== null) {
+    const [, panelId] = selfRolesDeleteMatch;
+    if (panelId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleSelfRolesDelete(ctx, panelId, res),
     };
   }
 

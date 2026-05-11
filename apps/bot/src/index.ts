@@ -38,9 +38,17 @@ const client = new SapphireClient({
     // style system messages and for permission overwrites tied to member role
     // caches.
     GatewayIntentBits.GuildMembers,
+    // Non-privileged in 2026 — delivers MESSAGE_REACTION_ADD/REMOVE for the
+    // self-roles (DEFI-661) listeners. Without it the reaction events never
+    // reach the bot at all.
+    GatewayIntentBits.GuildMessageReactions,
     // GatewayIntentBits.MessageContent  ← Phase 1.1 transcript export only
   ],
-  partials: [Partials.GuildMember, Partials.Channel],
+  // Self-roles reactions can land on messages that aren't in the cache
+  // (e.g. bot restart, reaction on an old message). Partials let
+  // discord.js deliver the event with a partial payload that the
+  // listener fetches on demand.
+  partials: [Partials.GuildMember, Partials.Channel, Partials.Message, Partials.Reaction],
   logger: { level: sapphireLogLevel },
 });
 
@@ -91,6 +99,7 @@ try {
       db: dbDrizzle,
       panel: diContainer.services.panel,
       verification: diContainer.services.verification,
+      selfRoles: diContainer.services.selfRoles,
       branding,
       isReady: () => client.isReady(),
     },

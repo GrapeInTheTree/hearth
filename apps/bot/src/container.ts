@@ -1,4 +1,5 @@
 import { dbDrizzle, type DbDrizzle } from '@hearth/database';
+import { SelfRolesService } from '@hearth/self-roles-core';
 import {
   GuildConfigService,
   PanelService,
@@ -16,6 +17,7 @@ export interface Services {
   readonly panel: PanelService;
   readonly ticket: TicketService;
   readonly verification: VerificationService;
+  readonly selfRoles: SelfRolesService;
 }
 
 declare module '@sapphire/pieces' {
@@ -50,5 +52,6 @@ export function attachServices(gateway: DiscordGateway): void {
   const panel = new PanelService(dbDrizzle, gateway, branding);
   const ticket = new TicketService(dbDrizzle, gateway, branding, guildConfig, panel);
   const verification = new VerificationService(dbDrizzle, gateway, branding);
-  container.services = { guildConfig, panel, ticket, verification };
+  const selfRoles = new SelfRolesService(dbDrizzle, gateway, branding);
+  container.services = { guildConfig, panel, ticket, verification, selfRoles };
 }
