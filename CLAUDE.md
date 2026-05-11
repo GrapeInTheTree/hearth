@@ -452,7 +452,36 @@ infra/
 - ✅ **테스트 누계 (DEFI-661 후)**: tickets-core 101 + verification-core 41 + self-roles-core 37 + bot 31 + dashboard 96 + integration 7 = **313 green**
 - ✅ **Trigger pattern ADR ratified**: button (ephemeral feedback / single-answer / modal chaining) vs reaction (multi-select toggle / silent application) — domain-by-domain. Service layer trigger-agnostic.
 - ✅ **라이브 검증** (로컬 docker compose, 2026-05-11): `Debound#2349` 봇이 `Fannie Test`에 게시한 panel에서 사용자 `297566244612210689`가 🇰🇷 클릭 → `granted` audit row + role 부여 → unclick → `revoked` + role 회수. 풀 라이프사이클 OK. 라이브 발견 함정 1건은 PR #32로 영구 fix.
-- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 PR #23+#28-31+#32+#33 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 self-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
+- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 DEFI-661 풀스택 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 self-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
+
+### Polish round (2026-05-11, 4 follow-up PR)
+
+라이브 검증 + 코드 리뷰로 발견한 결함들 영구 fix. 5 PR 추가 누적.
+
+| PR  | 제목                                                                                   | 한 줄                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #35 | `fix(self-roles): edit-in-place preserves user reactions, repost becomes escape hatch` | 옵션 추가 시 repost 강제 → user reaction 손실 UX bug. renderPanel edit 분기에서 `addMessageReactions` 호출 + 옵션 액션들 자동 sync. repost는 "freshen the panel" 용도로만                     |
+| #36 | `feat(self-roles): syncBotReactions + option holders cleanup + success logs`           | `addMessageReactions` → `syncBotReactions` (add missing + remove orphans). 옵션 삭제 시 audit-log 기반 role cleanup. 리스너 INFO 로그 (granted/revoked/noop)                                  |
+| #37 | `feat(self-roles): Dialog primitives + overview KPI + audit-log cleanup modal`         | shadcn Dialog primitive (`@radix-ui/react-dialog`). Repost + Remove option `window.confirm` → 모달 (holder count + cleanup 체크박스). Overview에 self-roles 2 KPI + activity feed integration |
+
+**Polish round 학습 (4건, 모두 CLAUDE.md §5 절대 금지 룰에 추가됨):**
+
+- discord.js `reaction.emoji.identifier`는 REST path용 URL-encoded — DB의 raw codepoint와 매치 안 됨. listener에서 `emoji.id !== null ? <:${name}:${id}> : emoji.name` 재조립 필수 (PR #32)
+- Repost는 destructive — message-level reaction 손실. 옵션 add/edit/remove는 edit-in-place로 sync (PR #35)
+- 봇 자기 reaction 무한 루프 방지 — `user.bot` 필터 + `message.author.id === client.user.id` 필터 둘 다 (DEFI-661 D8)
+- `syncBotReactions`는 add + remove orphans 한 번에 — 옵션 삭제 시 봇이 미리 추가한 reaction이 orphan으로 남는 것 방지 (PR #36)
+
+**테스트 누계 (Polish round 후):** tickets-core 101 + verification-core 41 + self-roles-core 39 + bot 31 + dashboard 97 + integration 7 = **316 green**.
+
+**알려진 운영 한계 (backlog):**
+
+| #   | 이슈                                                                                            | 우선순위                    |
+| --- | ----------------------------------------------------------------------------------------------- | --------------------------- |
+| 1   | `syncBotReactions` djs 구현체에 단위 테스트 없음 (회귀 위험)                                    | high — 다음 sprint 즉시     |
+| 2   | `getOptionHolders` JS-side aggregation (옵션당 이벤트 5만+에서 메모리 압박)                     | mid — 운영 데이터 누적 전   |
+| 3   | option 삭제 시 audit history 영구 손실 (FK cascade) — `ON DELETE SET NULL` + snapshot 컬럼 필요 | mid — 운영 1년차 전         |
+| 4   | tickets-core gateway port 비대화 (~25 메서드, 3 도메인) — sub-port 분할                         | low — welcome/polls 추가 시 |
+| 5   | `selfRolesService.ts` 600 줄 (panel + option + reaction + audit 한 클래스)                      | low — 운영 안정 후          |
 
 **이전 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
 
