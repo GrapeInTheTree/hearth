@@ -276,6 +276,7 @@ Custom commands, reminders, giveaways, polls (native API), feeds (YouTube/Twitch
 - ❌ 음악 기능 추가 — 범위 밖
 - ❌ Discord에 role assign 시도 시 `gateway.assignRoleToMember()` 결과 처리 누락 — `DiscordApiError` 50013(Manage Roles 누락) / 50001(role hierarchy 위반) 등을 잡아 graceful outcome으로 매핑해야 함. verification-core의 `handleSubmission`이 표준 패턴 (`role_assign_failed` outcome + audit log). self-roles-core는 `'noop'` action으로 매핑 (reaction은 ephemeral 못 띄움).
 - ❌ Reaction listener가 봇 자기 reaction에 반응 — `addMessageReactions`로 봇이 미리 추가한 reaction이 listener에 다시 도착해서 무한 루프 위험. 항상 `if (user.bot) return` 또는 `user.id !== client.user.id` 필터 + `message.author.id === client.user.id` 필터로 봇이 게시한 메시지에만 반응 (DEFI-661 패턴).
+- ❌ Reaction listener가 `reaction.emoji.identifier`를 도메인 식별자로 사용 — discord.js의 `identifier`는 **REST API path용 URL-encoded form** (Unicode 🇰🇷 → `%F0%9F%87%B0%F0%9F%87%B7`). 우리 DB는 raw codepoint 또는 `<:name:id>`를 저장하므로 lookup이 silent miss. 항상 `emoji.id`가 있으면 `<:${name}:${id}>`, 없으면 `emoji.name`으로 재조립해서 service에 전달 (DEFI-661 PR #32 라이브 발견).
 - ❌ `git commit --no-verify`, `--amend` 후 push — 항상 새 커밋
 - ❌ `Co-Authored-By: Claude` 태그 — Daniel 글로벌 규칙
 - ❌ **토큰/시크릿 커밋 금지** — `DISCORD_TOKEN`, `DISCORD_CLIENT_SECRET`, `DATABASE_URL`(비밀번호 포함), GCP 서비스 키, Sentry DSN, 그 외 모든 자격증명. **이 레포는 PUBLIC**이라 한 번이라도 커밋되면 git history에서 영구 노출됨. `.env*`는 모두 `.gitignore`에, `.env.example`만 placeholder 값으로 커밋. 의심스러우면 커밋 전에 반드시 `git diff --staged | grep -iE "(token|secret|key|password|dsn)"` 체크.
@@ -434,19 +435,24 @@ infra/
 
 **현재 상태 (2026-05-11 — DEFI-661 self-roles 모듈 ✅ 완료):**
 
-- ✅ **DEFI-661 Self-Roles Module** — Reaction-based language selector. 5 PR 누적 ~3,700 LOC. Linear 티켓 [DEFI-661](https://linear.app/chiliz-defi/issue/DEFI-661), due 2026-05-13, 5 points. reaction 패턴 채택 — domain-by-domain trigger ADR ratified (§4 Phase 3). verification-core form factor 80% mechanical port.
+- ✅ **DEFI-661 Self-Roles Module** — Reaction-based language selector. 5 PR (1차 스택) + 2 follow-up PR (라이브 발견 fix + Discord 한도 반영) 누적 ~3,750 LOC. Linear 티켓 [DEFI-661](https://linear.app/chiliz-defi/issue/DEFI-661), due 2026-05-13, 5 points — 2일 빠르게 ship. reaction 패턴 채택 — domain-by-domain trigger ADR ratified (§4 Phase 3). verification-core form factor 80% mechanical port.
 
-| #    | PR  | 제목                                                               | LOC         | 1줄                                                                                                  |
-| ---- | --- | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------- |
-| PR-1 | #23 | `feat(db): self-roles schema + drizzle migration`                  | +1565 / 0   | 3 schema (SelfRolesPanel/Option/Event) + `0002_self_roles.sql`. Cycle-free, messageId hot-path index |
-| PR-2 | #24 | `feat(core): self-roles-core package + gateway reaction extension` | +2200 / -10 | `@hearth/self-roles-core` 신규 + DiscordGateway 5 메서드 추가. 37 unit (PGlite + FakeGw)             |
-| PR-3 | #25 | `feat(self-roles): bot reaction listeners + slash + internal api`  | +852 / -13  | 2 listeners + DjsGateway 5 구현 + 8 slash + 3 routes + intent/Partials + 1 integration               |
-| PR-4 | #26 | `feat(self-roles): dashboard CRUD + emoji-role binding form`       | +1600 / -10 | 6 RSC + 2 actions + 7 components + sidebar nav + 16 unit tests                                       |
-| PR-5 | #27 | `chore(self-roles): CLAUDE.md ADR + 3-place doc sync`              | +200 / -10  | §4 Phase 3 ADR ratified + 3-place sync                                                               |
+| #    | PR  | 제목                                                                      | 1줄                                                                                                                                                                     |
+| ---- | --- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR-1 | #23 | `feat(db): self-roles schema + drizzle migration`                         | 3 schema (SelfRolesPanel/Option/Event) + `0002_self_roles.sql`. Cycle-free, messageId hot-path index                                                                    |
+| PR-2 | #28 | `feat(core): self-roles-core package + gateway reaction extension`        | `@hearth/self-roles-core` 신규 + DiscordGateway 5 메서드 추가. 37 unit (PGlite + FakeGw)                                                                                |
+| PR-3 | #29 | `feat(self-roles): bot reaction listeners + slash + internal api`         | 2 listeners + DjsGateway 5 구현 + 8 slash + 3 routes + intent/Partials + 1 integration                                                                                  |
+| PR-4 | #30 | `feat(self-roles): dashboard CRUD + emoji-role binding form`              | 6 RSC + 2 actions + 7 components + sidebar nav + 16 unit tests                                                                                                          |
+| PR-5 | #31 | `chore(self-roles): CLAUDE.md ADR + 3-place doc sync`                     | §4 Phase 3 ADR ratified + 3-place sync                                                                                                                                  |
+| fix  | #32 | `fix(self-roles): match DB emoji shape, not discord.js's REST identifier` | 라이브 검증 중 발견. `reaction.emoji.identifier`가 URL-encoded (`%F0%9F%87%B0%F0%9F%87%B7`)라 DB lookup miss. listener에서 `emoji.id`/`emoji.name`으로 raw shape 재조립 |
+| feat | #33 | `feat(self-roles): raise option cap to Discord's hard limit of 20`        | 자체 UX 마진 10 → Discord 하드 한도 20. 8 파일 (schemas + service + slash position 0-19 + dashboard form/copy + overflow test)                                          |
+
+> 📝 **PR-2~5는 GitHub stacked PR 재타게팅 때문에 번호 #24-27 → #28-31로 reroll**. 머지 시퀀스: #23 → #28 → #29 → #30 → #31 → #32 → #33. main commit graph 그대로.
 
 - ✅ **테스트 누계 (DEFI-661 후)**: tickets-core 101 + verification-core 41 + self-roles-core 37 + bot 31 + dashboard 96 + integration 7 = **313 green**
 - ✅ **Trigger pattern ADR ratified**: button (ephemeral feedback / single-answer / modal chaining) vs reaction (multi-select toggle / silent application) — domain-by-domain. Service layer trigger-agnostic.
-- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 PR-3+4 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 self-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
+- ✅ **라이브 검증** (로컬 docker compose, 2026-05-11): `Debound#2349` 봇이 `Fannie Test`에 게시한 panel에서 사용자 `297566244612210689`가 🇰🇷 클릭 → `granted` audit row + role 부여 → unclick → `revoked` + role 회수. 풀 라이프사이클 OK. 라이브 발견 함정 1건은 PR #32로 영구 fix.
+- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 PR #23+#28-31+#32+#33 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 self-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
 
 **이전 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
 
