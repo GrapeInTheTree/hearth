@@ -123,6 +123,9 @@ importers:
       '@hearth/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@hearth/self-roles-core':
+        specifier: workspace:*
+        version: link:../../packages/self-roles-core
       '@hearth/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -22,6 +22,7 @@ export const en = {
     panels: 'Ticket Panels',
     tickets: 'Tickets',
     verification: 'Verification',
+    selfRoles: 'Self-roles',
     settings: 'Settings',
     sectionWorkspace: 'Workspace',
     sectionAccount: 'Account',

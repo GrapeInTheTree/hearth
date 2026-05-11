@@ -20,6 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATHS = [
   resolve(__dirname, '../../../../packages/database/drizzle/0000_init.sql'),
   resolve(__dirname, '../../../../packages/database/drizzle/0001_verification.sql'),
+  resolve(__dirname, '../../../../packages/database/drizzle/0002_self_roles.sql'),
 ];
 
 let cachedSql: string | undefined;

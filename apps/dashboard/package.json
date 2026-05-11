@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@hearth/database": "workspace:*",
+    "@hearth/self-roles-core": "workspace:*",
     "@hearth/shared": "workspace:*",
     "@hearth/tickets-core": "workspace:*",
     "@hearth/verification-core": "workspace:*",
