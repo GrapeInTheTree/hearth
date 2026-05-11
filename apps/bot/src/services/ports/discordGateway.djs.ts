@@ -20,6 +20,8 @@ import {
   type TextChannel,
 } from 'discord.js';
 
+import { computeReactionDiff } from './reactionDiff.js';
+
 // Production implementation of DiscordGateway. Wraps a SapphireClient and
 // converts every discord.js exception into DiscordApiError so service code
 // has a single error class to branch on. Never expose discord.js types here.
@@ -321,34 +323,29 @@ export class DjsDiscordGateway implements DiscordGateway {
       const channel = await this.fetchTextChannel(channelId);
       const message = await channel.messages.fetch(messageId);
       const botId = this.client.user?.id;
+      if (botId === undefined) return;
 
-      // Compute the desired set in the same emoji-key shape we use for
-      // DB identity (raw Unicode or `<:name:id>` for custom), then walk
-      // the message's current reactions to spot orphans the bot still
-      // holds from a removed option.
-      const desired = new Set(desiredEmojis);
-      if (botId !== undefined) {
-        for (const reaction of message.reactions.cache.values()) {
-          if (!reaction.me) continue;
-          const key =
-            reaction.emoji.id !== null
-              ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
-              : (reaction.emoji.name ?? '');
-          if (!desired.has(key)) {
-            // Orphan — strip only the bot's own copy of this reaction.
-            // User reactions on the same emoji (shouldn't happen for a
-            // just-removed option, but defensive) are left alone.
-            await reaction.users.remove(botId).catch(() => undefined);
-          }
-        }
+      // The diff logic is pure and lives in ./reactionDiff so it can be
+      // unit tested without standing up a discord.js Client mock. We
+      // walk message.reactions.cache once to normalise into a structural
+      // shape, run the diff, then act on the results — orphans get
+      // their bot copy stripped, missing emoji get a fresh react.
+      const reactionLikes = Array.from(message.reactions.cache.values()).map((reaction) => ({
+        me: reaction.me,
+        emoji: { id: reaction.emoji.id, name: reaction.emoji.name },
+        raw: reaction,
+      }));
+      const { toAdd, orphansToRemove } = computeReactionDiff(reactionLikes, desiredEmojis);
+
+      // Orphans first so a removed-option emoji doesn't briefly outshine
+      // a newly added one if the operator did both in the same edit.
+      for (const orphan of orphansToRemove) {
+        await orphan.users.remove(botId).catch(() => undefined);
       }
-
       // Sequential rather than parallel: Discord rate-limits reaction
       // adds, and serial order also matches the operator's configured
       // option `position` (we receive emojis pre-sorted upstream).
-      // message.react is idempotent for the bot's own reactions, so
-      // re-adding existing ones is a cheap no-op rather than a duplicate.
-      for (const emoji of desiredEmojis) {
+      for (const emoji of toAdd) {
         // Best-effort per emoji — a single 10014 (unknown emoji) on a
         // custom emoji shouldn't block the rest of the strip.
         await message.react(emoji).catch(() => undefined);
