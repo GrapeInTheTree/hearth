@@ -20,7 +20,7 @@ import {
   type Result,
   ValidationError,
 } from '@hearth/shared';
-import type { Branding, DiscordGateway } from '@hearth/tickets-core';
+import type { Branding, VerificationGateway } from '@hearth/tickets-core';
 
 import { verification as i18n } from './i18n/index.js';
 import { buildVerificationPayload } from './lib/verificationBuilder.js';
@@ -88,7 +88,7 @@ export interface VerificationSubmissionResult {
 export class VerificationService {
   public constructor(
     private readonly db: DbDrizzle,
-    private readonly gateway: DiscordGateway,
+    private readonly gateway: VerificationGateway,
     private readonly branding: Branding,
   ) {}
 

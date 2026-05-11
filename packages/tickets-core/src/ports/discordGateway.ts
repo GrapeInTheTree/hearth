@@ -2,17 +2,30 @@ import type { APIEmbed } from 'discord-api-types/v10';
 
 import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 
-// The DiscordGateway interface is the only seam through which services
-// touch Discord. Production wiring uses DjsDiscordGateway (in apps/bot)
-// which delegates to a SapphireClient. Tests inject a FakeDiscordGateway.
+// The DiscordGateway is the only seam through which services touch
+// Discord. It is composed from one shared sub-interface (BaseGateway,
+// for role + member ops every domain needs) and three domain
+// sub-interfaces — TicketsGateway, VerificationGateway, SelfRolesGateway.
 //
-// Hard rule: services NEVER import from 'discord.js' directly. Anything
-// the service needs from Discord goes through this interface, with raw
-// IDs and plain JSON shapes (discord-api-types) only. Anything richer
-// than `string` / `number` / `bigint` / `readonly Record<...>` is
-// suspicious. This is what makes services unit-testable without booting
-// the framework, and what lets @hearth/tickets-core stay free of
-// the discord.js runtime so it can be imported by the dashboard.
+// Services depend on the **narrowest** sub-interface they need so the
+// domain cores import only the ops they actually use:
+//
+//   class TicketService          { constructor(...gw: TicketsGateway) }
+//   class VerificationService    { constructor(...gw: VerificationGateway) }
+//   class SelfRolesService       { constructor(...gw: SelfRolesGateway) }
+//
+// Production wiring (apps/bot) implements the full composite
+// DiscordGateway = TicketsGateway & VerificationGateway & SelfRolesGateway
+// — one DjsDiscordGateway instance feeds every service. Tests follow the
+// same pattern: a single FakeDiscordGateway satisfies all three so tests
+// can assert across domain boundaries when needed.
+//
+// Hard rule (unchanged): services NEVER import 'discord.js' directly.
+// Anything richer than `string` / `number` / `bigint` / `readonly
+// Record<...>` through this seam is suspicious. discord-api-types is OK
+// for embed shapes (types only, no runtime).
+
+// ─── shared payload shapes ───────────────────────────────────────────
 
 export interface PanelMessagePayload {
   readonly content: string | undefined;
@@ -67,7 +80,35 @@ export interface SendWelcomeMessageInput {
   readonly pin: boolean;
 }
 
-export interface DiscordGateway {
+// ─── BaseGateway ────────────────────────────────────────────────────
+// Operations every domain potentially needs: role grants, role checks,
+// member display. Verification + self-roles both call assign/remove +
+// memberHasRole; tickets uses resolveMemberDisplay for system lines.
+
+export interface BaseGateway {
+  /** Grant a role to a guild member. Throws DiscordApiError on Manage Roles
+   *  missing, role hierarchy violation, or member fetch failure — the
+   *  service layer catches and maps to a `role_assign_failed` /
+   *  `noop` audit event so the listener never throws past entry. */
+  assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void>;
+
+  /** Test whether a guild member already holds a role. Used by
+   *  verification to short-circuit re-clicks into an `already_verified`
+   *  outcome rather than a redundant Discord write. */
+  memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean>;
+
+  /** Revoke a role from a guild member. Same error contract as
+   *  assignRoleToMember — service layer maps to `noop` audit. */
+  removeRoleFromMember(guildId: string, userId: string, roleId: string): Promise<void>;
+
+  /** Resolve a member's display name for system messages. Returns
+   *  id-string fallback if not cached. */
+  resolveMemberDisplay(guildId: string, userId: string): Promise<string>;
+}
+
+// ─── TicketsGateway ─────────────────────────────────────────────────
+
+export interface TicketsGateway extends BaseGateway {
   /** Create a private text channel for a ticket. Returns the new channel id. */
   createTicketChannel(input: CreateTicketChannelInput): Promise<{ channelId: string }>;
 
@@ -109,22 +150,15 @@ export interface DiscordGateway {
     payload: PanelMessagePayload,
   ): Promise<void>;
 
-  /** Hard-delete a panel message. Used by the "Repost panel" flow to
-   *  drop the existing message before sending a fresh one further down
-   *  the channel. Best-effort — silently swallows already-gone messages
-   *  so the caller doesn't have to branch on 404. */
+  /** Hard-delete a panel message. Best-effort — silently swallows
+   *  already-gone messages. */
   deletePanelMessage(channelId: string, messageId: string): Promise<void>;
+}
 
-  /** Resolve a member's display name for system messages. Returns id-string fallback if not cached. */
-  resolveMemberDisplay(guildId: string, userId: string): Promise<string>;
+// ─── VerificationGateway ────────────────────────────────────────────
 
-  // ─── Verification (DEFI-658) ──────────────────────────────────────────
-  // Same lifecycle shape as panel messages but kept as separate methods
-  // so the bot's djs gateway can log/observe verification activity
-  // distinctly and so future verification-only behaviour (e.g. hint
-  // embeds, ephemeral confirmations) can be added without touching panels.
-
-  /** Send a verification message to a public channel. */
+export interface VerificationGateway extends BaseGateway {
+  /** Send a verification message (embed + button row) to a public channel. */
   sendVerificationMessage(
     channelId: string,
     payload: VerificationMessagePayload,
@@ -137,71 +171,45 @@ export interface DiscordGateway {
     payload: VerificationMessagePayload,
   ): Promise<void>;
 
-  /** Hard-delete a verification message. Best-effort — silently swallows
-   *  already-gone messages so the caller doesn't have to branch on 404. */
+  /** Hard-delete a verification message. Best-effort. */
   deleteVerificationMessage(channelId: string, messageId: string): Promise<void>;
+}
 
-  /** Grant a role to a guild member. Throws DiscordApiError on Manage Roles
-   *  missing, role hierarchy violation, or member fetch failure — the
-   *  service layer catches and maps to a 'role_assign_failed' outcome. */
-  assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void>;
+// ─── SelfRolesGateway ───────────────────────────────────────────────
 
-  /** Test whether a guild member already holds a role. Used to short-circuit
-   *  re-clicks of a correct verification button into an "already verified"
-   *  outcome rather than a redundant Discord write. */
-  memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean>;
-
-  // ─── Self-roles (DEFI-661) ────────────────────────────────────────────
-  // Reaction-based domain — bot posts an embed and pre-adds one reaction
-  // per option so users can tap them to toggle their role membership. The
-  // listener (in apps/bot) routes raw reaction events back to the
-  // self-roles service; this port surfaces only the outbound writes.
-
-  /** Send a self-roles message to a public channel. The bot will follow up
-   *  with addMessageReactions to seed each option's emoji. */
+export interface SelfRolesGateway extends BaseGateway {
+  /** Send a self-roles message to a public channel. The bot will follow
+   *  up with syncBotReactions to seed each option's emoji. */
   sendSelfRolesMessage(
     channelId: string,
     payload: SelfRolesMessagePayload,
   ): Promise<{ messageId: string }>;
 
-  /** Edit an existing self-roles message — used after panel/option edits.
-   *  Reaction seed is managed separately via addMessageReactions; the bot's
-   *  own reactions on a message persist across embed edits. */
+  /** Edit an existing self-roles message. Reactions are reconciled
+   *  separately via syncBotReactions. */
   editSelfRolesMessage(
     channelId: string,
     messageId: string,
     payload: SelfRolesMessagePayload,
   ): Promise<void>;
 
-  /** Hard-delete a self-roles message. Best-effort — silently swallows
-   *  already-gone messages so the caller doesn't have to branch on 404. */
+  /** Hard-delete a self-roles message. Best-effort. */
   deleteSelfRolesMessage(channelId: string, messageId: string): Promise<void>;
 
-  /** Bring the bot's own reactions on a self-roles message into line with
-   *  the desired set: add anything missing, remove any orphan reactions
-   *  the bot left behind from a previous (now-removed) option. Reaction
-   *  identity is the same shape we store in DB — raw Unicode codepoint
-   *  for built-in emoji, `<:name:id>` for custom emoji.
-   *
-   *  Two callers:
-   *   - render after first send: message has no reactions yet, every
-   *     desired emoji gets added, no orphans to remove.
-   *   - render after edit (option add / edit / remove): existing bot
-   *     reactions stay where they should, missing ones are added,
-   *     orphans (bot still has them from a removed option) are
-   *     stripped. User reactions are never touched.
-   *
-   *  Unknown-emoji errors (10014) are best-effort per emoji — one bad
-   *  custom emoji shouldn't break the rest of the strip. */
+  /** Reconcile the bot's own reactions on a self-roles message with the
+   *  desired set: add anything missing, strip orphan bot reactions from
+   *  removed options. User reactions are never touched. Unknown-emoji
+   *  failures are best-effort per emoji. */
   syncBotReactions(
     channelId: string,
     messageId: string,
     desiredEmojis: readonly string[],
   ): Promise<void>;
-
-  /** Revoke a role from a guild member. Throws DiscordApiError on Manage
-   *  Roles missing, role hierarchy violation, or member fetch failure —
-   *  the service layer catches and maps to a 'noop' audit event so the
-   *  reaction-remove path never throws past the listener. */
-  removeRoleFromMember(guildId: string, userId: string, roleId: string): Promise<void>;
 }
+
+// ─── DiscordGateway ─────────────────────────────────────────────────
+// Composite for the production djs implementation and for test fakes
+// that span multiple domains. Service-layer code prefers the narrower
+// sub-interfaces above.
+
+export type DiscordGateway = TicketsGateway & VerificationGateway & SelfRolesGateway;

@@ -14,7 +14,7 @@ import type { ValidationError } from '@hearth/shared';
 import type { Branding } from './branding.js';
 import { tickets as i18nTickets } from './i18n/index.js';
 import { buildPanelComponents } from './lib/panelBuilder.js';
-import type { DiscordGateway, PanelMessagePayload } from './ports/discordGateway.js';
+import type { PanelMessagePayload, TicketsGateway } from './ports/discordGateway.js';
 
 const PLACEHOLDER_MESSAGE_ID = 'pending';
 
@@ -81,7 +81,7 @@ type PanelWithTypes = Panel & { ticketTypes: PanelTicketType[] };
 export class PanelService {
   public constructor(
     private readonly db: DbDrizzle,
-    private readonly gateway: DiscordGateway,
+    private readonly gateway: TicketsGateway,
     private readonly branding: Branding,
   ) {}
 

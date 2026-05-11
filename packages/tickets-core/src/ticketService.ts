@@ -31,7 +31,7 @@ import { ticketOpenLockKey } from './lib/lockKeys.js';
 import { hasManageGuild, isSupportStaff } from './lib/permissions.js';
 import { buildWelcomeMessage } from './lib/welcomeBuilder.js';
 import type { PanelService } from './panelService.js';
-import type { DiscordGateway, ModlogEmbed } from './ports/discordGateway.js';
+import type { ModlogEmbed, TicketsGateway } from './ports/discordGateway.js';
 
 // pg_advisory_xact_lock acquisition timeout. Same-tuple contention
 // (same user double-clicking the same panel type) is the only path
@@ -80,7 +80,7 @@ export class TicketService {
 
   public constructor(
     private readonly db: DbDrizzle,
-    private readonly gateway: DiscordGateway,
+    private readonly gateway: TicketsGateway,
     private readonly branding: Branding,
     private readonly guildConfig: GuildConfigService,
     private readonly panel: PanelService,

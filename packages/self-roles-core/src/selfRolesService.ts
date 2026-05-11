@@ -21,7 +21,7 @@ import {
   type Result,
   ValidationError,
 } from '@hearth/shared';
-import type { Branding, DiscordGateway } from '@hearth/tickets-core';
+import type { Branding, SelfRolesGateway } from '@hearth/tickets-core';
 
 import { selfRoles as i18n } from './i18n/index.js';
 import { buildSelfRolesPayload } from './lib/selfRolesBuilder.js';
@@ -92,7 +92,7 @@ export interface SelfRolesReactionResult {
 export class SelfRolesService {
   public constructor(
     private readonly db: DbDrizzle,
-    private readonly gateway: DiscordGateway,
+    private readonly gateway: SelfRolesGateway,
     private readonly branding: Branding,
   ) {}
 

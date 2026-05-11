@@ -19,12 +19,16 @@ export { TicketService } from './ticketService.js';
 export { GuildConfigService } from './guildConfigService.js';
 
 export type {
+  BaseGateway,
   CreateTicketChannelInput,
   DiscordGateway,
   ModlogEmbed,
   PanelMessagePayload,
+  SelfRolesGateway,
   SelfRolesMessagePayload,
   SendWelcomeMessageInput,
+  TicketsGateway,
+  VerificationGateway,
   VerificationMessagePayload,
 } from './ports/discordGateway.js';
 
