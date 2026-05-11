@@ -17,7 +17,11 @@ import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 
  *
  * Reaction events have no customId, so identity is `(messageId, emoji)` —
  * the unique index on SelfRolesOption(panelId, emoji) makes the lookup
- * an O(log n) query.
+ * an O(log n) query. The emoji key has to match the shape stored in DB:
+ * raw Unicode codepoint for built-in emoji, `<:name:id>` for custom ones.
+ * discord.js's `reaction.emoji.identifier` is URL-encoded for the REST
+ * API path (`%F0%9F%87%B0%F0%9F%87%B7`) and never matches our rows —
+ * see emojiKey derivation below.
  */
 export class MessageReactionAddListener extends Listener<typeof Events.MessageReactionAdd> {
   public constructor(context: Listener.LoaderContext, options: Listener.Options) {
@@ -47,15 +51,20 @@ export class MessageReactionAddListener extends Listener<typeof Events.MessageRe
     if (botId === undefined || reaction.message.author?.id !== botId) return;
     if (reaction.message.guildId === null) return;
 
+    const emojiKey =
+      reaction.emoji.id !== null
+        ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
+        : (reaction.emoji.name ?? '');
+
     const result = await this.container.services.selfRoles.handleReactionAdd({
       messageId: reaction.message.id,
-      emoji: reaction.emoji.identifier,
+      emoji: emojiKey,
       userId: user.id,
       guildId: reaction.message.guildId,
     });
     if (!result.ok) {
       this.container.logger.warn(
-        { err: result.error, panel: reaction.message.id, emoji: reaction.emoji.identifier },
+        { err: result.error, panel: reaction.message.id, emoji: emojiKey },
         'self-roles reaction add failed unexpectedly',
       );
     }

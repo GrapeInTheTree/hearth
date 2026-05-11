@@ -35,15 +35,23 @@ export class MessageReactionRemoveListener extends Listener<typeof Events.Messag
     if (botId === undefined || reaction.message.author?.id !== botId) return;
     if (reaction.message.guildId === null) return;
 
+    // discord.js's reaction.emoji.identifier is URL-encoded for Unicode
+    // (REST API path form). Our DB stores the raw codepoint, so we have
+    // to denormalise here. Same shape as messageReactionAdd.
+    const emojiKey =
+      reaction.emoji.id !== null
+        ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
+        : (reaction.emoji.name ?? '');
+
     const result = await this.container.services.selfRoles.handleReactionRemove({
       messageId: reaction.message.id,
-      emoji: reaction.emoji.identifier,
+      emoji: emojiKey,
       userId: user.id,
       guildId: reaction.message.guildId,
     });
     if (!result.ok) {
       this.container.logger.warn(
-        { err: result.error, panel: reaction.message.id, emoji: reaction.emoji.identifier },
+        { err: result.error, panel: reaction.message.id, emoji: emojiKey },
         'self-roles reaction remove failed unexpectedly',
       );
     }
