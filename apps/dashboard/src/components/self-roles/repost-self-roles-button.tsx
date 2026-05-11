@@ -22,7 +22,7 @@ export function RepostSelfRolesButton({
   async function handleClick(): Promise<void> {
     if (submitting) return;
     const ok = window.confirm(
-      'Repost the self-roles panel? The existing Discord message will be deleted and a new one will appear at the bottom of the channel with the reaction strip re-seeded. Existing role grants on users stay.',
+      "Repost will delete the existing Discord message and post a fresh one at the bottom of the channel.\n\n• Users keep their roles (role grants are member-level, not message-level).\n• Their visible reaction state on the old message is lost — they'll need to re-react to toggle off.\n\nFor adding or editing options you usually do NOT need this — edits sync to the existing message automatically. Use Repost only when you want the panel to surface at the bottom of the channel again.",
     );
     if (!ok) return;
     setSubmitting(true);

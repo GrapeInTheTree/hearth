@@ -397,6 +397,30 @@ describe('SelfRolesService.renderPanel / repostPanel', () => {
     expect(gateway.callsOf('sendSelfRolesMessage')).toHaveLength(0);
   });
 
+  it('re-seeds the reaction strip on every edit so new options surface without repost', async () => {
+    // First render with one option → bot adds 🇺🇸 reaction.
+    await service.addOption(panelId, optionInput());
+    await service.renderPanel(panelId);
+    gateway.reset();
+    // Operator adds a second option, then re-renders (the dashboard
+    // option-add Server Action drives this implicitly).
+    await service.addOption(
+      panelId,
+      optionInput({ label: 'Korean', emoji: '🇰🇷', roleId: ROLE_KR, position: 1 }),
+    );
+    const result = await service.renderPanel(panelId);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw result.error;
+    expect(result.value.recreated).toBe(false);
+    expect(gateway.callsOf('editSelfRolesMessage')).toHaveLength(1);
+    // The fix: edit branch must also call addMessageReactions, otherwise
+    // the new 🇰🇷 reaction never appears and the operator is forced to
+    // repost (which wipes existing user reactions).
+    const reactions = gateway.callsOf('addMessageReactions');
+    expect(reactions).toHaveLength(1);
+    expect((reactions[0]?.args as { emojis: string[] }).emojis).toEqual(['🇺🇸', '🇰🇷']);
+  });
+
   it('repostPanel drops the previous message and sends a fresh one', async () => {
     await service.addOption(panelId, optionInput());
     await service.renderPanel(panelId);

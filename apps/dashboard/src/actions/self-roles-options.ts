@@ -12,7 +12,36 @@ import { revalidatePath } from 'next/cache';
 
 import type { SelfRolesActionResult } from './self-roles.js';
 
+import { callBot } from '@/lib/botClient';
 import { authorizeGuild } from '@/lib/server-auth';
+
+/**
+ * After every option mutation we sync the live message: the bot edits the
+ * embed in place and re-seeds the reaction strip with the current options.
+ * Discord no-ops bot reactions it already has, so existing user reactions
+ * (and granted roles) survive — operators never need a destructive repost
+ * just to add a flag. Bot reactions for removed options stay as harmless
+ * orphans (clicks miss the (panelId, emoji) lookup → silent noop).
+ *
+ * Errors here don't roll back the DB write — `discordSyncFailed` surfaces
+ * a banner and the operator can retry sync from the panel detail page.
+ */
+async function syncPanelToDiscord(args: {
+  readonly guildId: string;
+  readonly panelId: string;
+}): Promise<{ failed: false } | { failed: true; message: string }> {
+  const renderResult = await callBot<{ messageId: string; recreated: boolean }>({
+    path: `/internal/self-roles/${args.panelId}/render`,
+    method: 'POST',
+    body: {},
+  });
+  revalidatePath(`/g/${args.guildId}/self-roles`);
+  revalidatePath(`/g/${args.guildId}/self-roles/${args.panelId}`);
+  if (isErr(renderResult)) {
+    return { failed: true, message: renderResult.error.message };
+  }
+  return { failed: false };
+}
 
 const MAX_OPTIONS_PER_PANEL = 20;
 
@@ -92,8 +121,14 @@ export async function addSelfRolesOption(
     return err({ code: 'INTERNAL_ERROR', message: 'Failed to insert option.' });
   }
 
-  revalidatePath(`/g/${args.guildId}/self-roles/${args.panelId}`);
-
+  const sync = await syncPanelToDiscord({ guildId: args.guildId, panelId: args.panelId });
+  if (sync.failed) {
+    return ok({
+      value: { optionId: created.id },
+      discordSyncFailed: true,
+      discordSyncMessage: sync.message,
+    });
+  }
   return ok({
     value: { optionId: created.id },
     discordSyncFailed: false,
@@ -184,8 +219,14 @@ export async function updateSelfRolesOption(
       .where(eq(schema.selfRolesOption.id, args.optionId));
   }
 
-  revalidatePath(`/g/${args.guildId}/self-roles/${args.panelId}`);
-
+  const sync = await syncPanelToDiscord({ guildId: args.guildId, panelId: args.panelId });
+  if (sync.failed) {
+    return ok({
+      value: { optionId: args.optionId },
+      discordSyncFailed: true,
+      discordSyncMessage: sync.message,
+    });
+  }
   return ok({
     value: { optionId: args.optionId },
     discordSyncFailed: false,
@@ -217,8 +258,14 @@ export async function removeSelfRolesOption(
     .delete(schema.selfRolesOption)
     .where(eq(schema.selfRolesOption.id, args.optionId));
 
-  revalidatePath(`/g/${args.guildId}/self-roles/${args.panelId}`);
-
+  const sync = await syncPanelToDiscord({ guildId: args.guildId, panelId: args.panelId });
+  if (sync.failed) {
+    return ok({
+      value: { removedId: args.optionId },
+      discordSyncFailed: true,
+      discordSyncMessage: sync.message,
+    });
+  }
   return ok({
     value: { removedId: args.optionId },
     discordSyncFailed: false,

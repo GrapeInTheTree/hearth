@@ -10,6 +10,9 @@ import {
   updateSelfRolesOption,
 } from '@/actions/self-roles-options';
 
+const botClientMock = vi.hoisted(() => ({ callBot: vi.fn() }));
+vi.mock('@/lib/botClient', () => botClientMock);
+
 const authMock = vi.hoisted(() => ({ authorizeGuild: vi.fn() }));
 vi.mock('@/lib/server-auth', () => authMock);
 
@@ -55,6 +58,7 @@ describe('addSelfRolesOption', () => {
   beforeEach(async () => {
     testDb = await setupTestDb();
     authMock.authorizeGuild.mockResolvedValue(ok({ userId: 'u1', username: 'tester' }));
+    botClientMock.callBot.mockResolvedValue(ok({ messageId: 'msg-1', recreated: false }));
     const seeded = await seedPanelWithOption(testDb);
     panelId = seeded.panelId;
   });
@@ -63,7 +67,7 @@ describe('addSelfRolesOption', () => {
     vi.clearAllMocks();
   });
 
-  it('adds a second option with a different emoji', async () => {
+  it('adds a second option with a different emoji and auto-syncs to Discord', async () => {
     const result = await addSelfRolesOption({
       guildId,
       panelId,
@@ -75,6 +79,38 @@ describe('addSelfRolesOption', () => {
       },
     });
     expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.discordSyncFailed).toBe(false);
+    const rows = await testDb.db
+      .select()
+      .from(schema.selfRolesOption)
+      .where(eq(schema.selfRolesOption.panelId, panelId));
+    expect(rows).toHaveLength(2);
+    // The fix: option add must auto-push to the live message, otherwise
+    // operators are forced to manually repost (which wipes user reactions).
+    expect(botClientMock.callBot).toHaveBeenCalledWith(
+      expect.objectContaining({ path: `/internal/self-roles/${panelId}/render` }),
+    );
+  });
+
+  it('flags discordSyncFailed when the bot is unreachable but keeps the DB row', async () => {
+    botClientMock.callBot.mockResolvedValue({
+      ok: false,
+      error: { code: 'DISCORD_API_ERROR', message: 'bot down' },
+    });
+    const result = await addSelfRolesOption({
+      guildId,
+      panelId,
+      input: {
+        label: 'Japanese',
+        emoji: '🇯🇵',
+        roleId: roleB,
+        position: 2,
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.discordSyncFailed).toBe(true);
     const rows = await testDb.db
       .select()
       .from(schema.selfRolesOption)
@@ -132,6 +168,7 @@ describe('updateSelfRolesOption', () => {
   beforeEach(async () => {
     testDb = await setupTestDb();
     authMock.authorizeGuild.mockResolvedValue(ok({ userId: 'u1', username: 'tester' }));
+    botClientMock.callBot.mockResolvedValue(ok({ messageId: 'msg-1', recreated: false }));
     const seeded = await seedPanelWithOption(testDb);
     panelId = seeded.panelId;
     optionId = seeded.optionId;
@@ -178,6 +215,7 @@ describe('removeSelfRolesOption', () => {
   beforeEach(async () => {
     testDb = await setupTestDb();
     authMock.authorizeGuild.mockResolvedValue(ok({ userId: 'u1', username: 'tester' }));
+    botClientMock.callBot.mockResolvedValue(ok({ messageId: 'msg-1', recreated: false }));
     const seeded = await seedPanelWithOption(testDb);
     panelId = seeded.panelId;
     optionId = seeded.optionId;
