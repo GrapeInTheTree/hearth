@@ -30,18 +30,28 @@ that catches a class of misconfiguration. The full deploy flow lives in
       Roles, Send Messages, Embed Links, Use Slash Commands, View Audit
       Log for delete events).
   - **Manage Roles** is required for the verification feature
-    (DEFI-658) — the bot grants the configured role on a correct
-    submission. If you skipped it on a previous invite, re-issue the
+    (DEFI-658) **and** the self-roles feature (DEFI-661) — the bot
+    grants the configured role on a correct verification submission or
+    a self-roles reaction, and revokes it when the user removes the
+    reaction. If you skipped it on a previous invite, re-issue the
     bot invite URL or have an admin grant the bot's role this
     permission via Server Settings → Roles → (bot role) → Permissions.
   - **Role hierarchy**: the bot's own role must sit _above_ every role
     it's expected to assign in the server's role list (Server Settings
     → Roles → drag the bot role up). Discord rejects assignments to
     roles at-or-above the bot's position with HTTP 403 / code 50013;
-    the verification service surfaces this as
-    `role_assign_failed` outcome to the user and logs the event.
+    the verification service surfaces this as `role_assign_failed`
+    outcome to the user and self-roles records a `'noop'` audit event
+    (reactions can't show ephemeral feedback — operators have to watch
+    the bot logs).
 - [ ] `Server Members Intent` is **enabled** under
       `Bot → Privileged Gateway Intents`.
+- [ ] `GuildMessageReactions` intent — **non-privileged in 2026**, no
+      Developer Portal toggle required. The bot requests it in code
+      (`apps/bot/src/index.ts`). If you ever see "reactions don't grant
+      roles" reports, confirm the bot was redeployed after the
+      DEFI-661 PRs landed (intent + `Partials.Message/Reaction` were
+      added together).
 
 ## Secrets
 
