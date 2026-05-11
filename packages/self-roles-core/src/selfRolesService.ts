@@ -9,6 +9,7 @@ import {
   type SelfRolesEvent,
   type SelfRolesOption,
   type SelfRolesPanel,
+  sql,
 } from '@hearth/database';
 import {
   type AppError,
@@ -377,24 +378,26 @@ export class SelfRolesService {
    * roles it ever handed out cleaned up).
    */
   public async getOptionHolders(optionId: string): Promise<readonly string[]> {
-    const events = await this.db
-      .select({
-        userId: schema.selfRolesEvent.userId,
-        action: schema.selfRolesEvent.action,
-      })
+    // SQL-side net-count aggregation. Each user's `granted` events
+    // contribute +1, `revoked` events contribute −1, anything else
+    // (e.g. `noop`) contributes 0. Postgres SUM + CASE handles this
+    // in one pass over the option's event partition with no row
+    // materialisation cost — the previous JS-Map implementation
+    // pulled every event into memory, which broke down at ~50k
+    // events per option (popular language on a large guild after a
+    // year of activity).
+    //
+    // PGlite (used by unit tests) accepts the same dialect, so this
+    // works in both the test harness and production Postgres.
+    const rows = await this.db
+      .select({ userId: schema.selfRolesEvent.userId })
       .from(schema.selfRolesEvent)
-      .where(eq(schema.selfRolesEvent.optionId, optionId));
-    const netByUser = new Map<string, number>();
-    for (const e of events) {
-      const delta =
-        e.action === SelfRolesAction.granted ? 1 : e.action === SelfRolesAction.revoked ? -1 : 0;
-      if (delta !== 0) netByUser.set(e.userId, (netByUser.get(e.userId) ?? 0) + delta);
-    }
-    const holders: string[] = [];
-    for (const [userId, net] of netByUser) {
-      if (net > 0) holders.push(userId);
-    }
-    return holders;
+      .where(eq(schema.selfRolesEvent.optionId, optionId))
+      .groupBy(schema.selfRolesEvent.userId)
+      .having(
+        sql`SUM(CASE WHEN ${schema.selfRolesEvent.action} = ${SelfRolesAction.granted} THEN 1 WHEN ${schema.selfRolesEvent.action} = ${SelfRolesAction.revoked} THEN -1 ELSE 0 END) > 0`,
+      );
+    return rows.map((r) => r.userId);
   }
 
   /**
