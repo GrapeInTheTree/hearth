@@ -724,3 +724,151 @@ describe('SelfRolesService.listEvents / countEvents', () => {
     expect(events.every((e) => e.action === SelfRolesAction.granted)).toBe(true);
   });
 });
+
+// ─────────────────────── getOptionHolders SQL aggregation ───────────────────────
+
+describe('SelfRolesService.getOptionHolders (SQL net-count)', () => {
+  let testDb: TestDb;
+  let gateway: FakeDiscordGateway;
+  let service: SelfRolesService;
+  let panelId: string;
+  let messageId: string;
+  let usOptionId: string;
+
+  const userOnce = 'u-once';
+  const userBalanced = 'u-net-zero';
+  const userBouncing = 'u-toggled-back-on';
+  const userToggled = 'u-toggled-off';
+
+  beforeEach(async () => {
+    testDb = await createTestDb();
+    gateway = new FakeDiscordGateway();
+    service = new SelfRolesService(testDb.db, gateway, branding);
+    const created = await service.createPanel(basePanel);
+    if (!created.ok) throw created.error;
+    panelId = created.value.panel.id;
+    const us = await service.addOption(panelId, optionInput());
+    if (!us.ok) throw us.error;
+    usOptionId = us.value.id;
+    const render = await service.renderPanel(panelId);
+    if (!render.ok) throw render.error;
+    messageId = render.value.messageId;
+  });
+  afterEach(async () => {
+    await testDb.close();
+  });
+
+  it('returns empty list when no events exist', async () => {
+    expect(await service.getOptionHolders(usOptionId)).toEqual([]);
+  });
+
+  it('includes a user with a single grant (net +1)', async () => {
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userOnce,
+      guildId: GUILD_ID,
+    });
+    expect(await service.getOptionHolders(usOptionId)).toEqual([userOnce]);
+  });
+
+  it('excludes a user whose grant + revoke nets to zero', async () => {
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userBalanced,
+      guildId: GUILD_ID,
+    });
+    await service.handleReactionRemove({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userBalanced,
+      guildId: GUILD_ID,
+    });
+    expect(await service.getOptionHolders(usOptionId)).toEqual([]);
+  });
+
+  it('includes a user whose grant + revoke + grant nets to +1', async () => {
+    for (let i = 0; i < 2; i++) {
+      await service.handleReactionAdd({
+        messageId,
+        emoji: '🇺🇸',
+        userId: userBouncing,
+        guildId: GUILD_ID,
+      });
+      if (i === 0) {
+        await service.handleReactionRemove({
+          messageId,
+          emoji: '🇺🇸',
+          userId: userBouncing,
+          guildId: GUILD_ID,
+        });
+      }
+    }
+    expect(await service.getOptionHolders(usOptionId)).toEqual([userBouncing]);
+  });
+
+  it('handles a mix of users with different patterns in one call', async () => {
+    // userOnce: grant → holder
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userOnce,
+      guildId: GUILD_ID,
+    });
+    // userToggled: grant → revoke → NOT a holder
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userToggled,
+      guildId: GUILD_ID,
+    });
+    await service.handleReactionRemove({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userToggled,
+      guildId: GUILD_ID,
+    });
+    // userBouncing: grant → revoke → grant → holder
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userBouncing,
+      guildId: GUILD_ID,
+    });
+    await service.handleReactionRemove({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userBouncing,
+      guildId: GUILD_ID,
+    });
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userBouncing,
+      guildId: GUILD_ID,
+    });
+
+    const holders = await service.getOptionHolders(usOptionId);
+    expect(new Set(holders)).toEqual(new Set([userOnce, userBouncing]));
+    expect(holders).not.toContain(userToggled);
+  });
+
+  it("noop events don't affect the net count", async () => {
+    // Grant gives net +1, then a manually-injected noop event (which
+    // models a Discord-rejected role op) should leave the net at +1.
+    await service.handleReactionAdd({
+      messageId,
+      emoji: '🇺🇸',
+      userId: userOnce,
+      guildId: GUILD_ID,
+    });
+    await testDb.db.insert(schema.selfRolesEvent).values({
+      panelId,
+      userId: userOnce,
+      optionId: usOptionId,
+      action: SelfRolesAction.noop,
+    });
+    expect(await service.getOptionHolders(usOptionId)).toEqual([userOnce]);
+  });
+});
