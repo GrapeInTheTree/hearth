@@ -177,15 +177,26 @@ export interface DiscordGateway {
    *  already-gone messages so the caller doesn't have to branch on 404. */
   deleteSelfRolesMessage(channelId: string, messageId: string): Promise<void>;
 
-  /** Pre-add reactions to a self-roles message in the given order. Each
-   *  string is either a Unicode codepoint (e.g. '🇺🇸') or the
-   *  `name:id` shape Discord's REST API expects for custom emoji. The bot
-   *  applies them sequentially so the reaction strip respects option
-   *  position. Unknown-emoji errors (10014) are surfaced to the caller. */
-  addMessageReactions(
+  /** Bring the bot's own reactions on a self-roles message into line with
+   *  the desired set: add anything missing, remove any orphan reactions
+   *  the bot left behind from a previous (now-removed) option. Reaction
+   *  identity is the same shape we store in DB — raw Unicode codepoint
+   *  for built-in emoji, `<:name:id>` for custom emoji.
+   *
+   *  Two callers:
+   *   - render after first send: message has no reactions yet, every
+   *     desired emoji gets added, no orphans to remove.
+   *   - render after edit (option add / edit / remove): existing bot
+   *     reactions stay where they should, missing ones are added,
+   *     orphans (bot still has them from a removed option) are
+   *     stripped. User reactions are never touched.
+   *
+   *  Unknown-emoji errors (10014) are best-effort per emoji — one bad
+   *  custom emoji shouldn't break the rest of the strip. */
+  syncBotReactions(
     channelId: string,
     messageId: string,
-    emojis: readonly string[],
+    desiredEmojis: readonly string[],
   ): Promise<void>;
 
   /** Revoke a role from a guild member. Throws DiscordApiError on Manage

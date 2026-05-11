@@ -380,9 +380,9 @@ describe('SelfRolesService.renderPanel / repostPanel', () => {
     if (!result.ok) throw result.error;
     expect(result.value.recreated).toBe(true);
     expect(gateway.callsOf('sendSelfRolesMessage')).toHaveLength(1);
-    const reactions = gateway.callsOf('addMessageReactions');
+    const reactions = gateway.callsOf('syncBotReactions');
     expect(reactions).toHaveLength(1);
-    expect((reactions[0]?.args as { emojis: string[] }).emojis).toEqual(['🇺🇸', '🇰🇷']);
+    expect((reactions[0]?.args as { desiredEmojis: string[] }).desiredEmojis).toEqual(['🇺🇸', '🇰🇷']);
   });
 
   it('edits in place when the panel already has a real messageId', async () => {
@@ -413,12 +413,12 @@ describe('SelfRolesService.renderPanel / repostPanel', () => {
     if (!result.ok) throw result.error;
     expect(result.value.recreated).toBe(false);
     expect(gateway.callsOf('editSelfRolesMessage')).toHaveLength(1);
-    // The fix: edit branch must also call addMessageReactions, otherwise
+    // The fix: edit branch must also call syncBotReactions, otherwise
     // the new 🇰🇷 reaction never appears and the operator is forced to
     // repost (which wipes existing user reactions).
-    const reactions = gateway.callsOf('addMessageReactions');
+    const reactions = gateway.callsOf('syncBotReactions');
     expect(reactions).toHaveLength(1);
-    expect((reactions[0]?.args as { emojis: string[] }).emojis).toEqual(['🇺🇸', '🇰🇷']);
+    expect((reactions[0]?.args as { desiredEmojis: string[] }).desiredEmojis).toEqual(['🇺🇸', '🇰🇷']);
   });
 
   it('repostPanel drops the previous message and sends a fresh one', async () => {
@@ -438,7 +438,34 @@ describe('SelfRolesService.renderPanel / repostPanel', () => {
     const result = await service.renderPanel(panelId);
     expect(result.ok).toBe(true);
     if (!result.ok) throw result.error;
-    expect(gateway.callsOf('addMessageReactions')).toHaveLength(0);
+    expect(gateway.callsOf('syncBotReactions')).toHaveLength(0);
+  });
+
+  it('cleans orphan bot reactions when an option is removed via re-render', async () => {
+    // Two options published, both with bot reactions on the message.
+    await service.addOption(panelId, optionInput());
+    await service.addOption(
+      panelId,
+      optionInput({ label: 'Korean', emoji: '🇰🇷', roleId: ROLE_KR, position: 1 }),
+    );
+    await service.renderPanel(panelId);
+    gateway.reset();
+    // Operator removes one option, then the dashboard's option-remove
+    // action triggers a re-render (same path as add / edit).
+    const optionList = await service.getPanel(panelId);
+    if (!optionList.ok) throw optionList.error;
+    const koreanOption = optionList.value.options.find((o) => o.emoji === '🇰🇷');
+    if (koreanOption === undefined) throw new Error('seeded option missing');
+    await service.removeOption(koreanOption.id);
+    const result = await service.renderPanel(panelId);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw result.error;
+    // The edit-branch sync call now happens unconditionally — even when
+    // the new desired set is smaller than before, so the gateway can
+    // strip the bot's own 🇰🇷 reaction left over from the deleted option.
+    const syncs = gateway.callsOf('syncBotReactions');
+    expect(syncs).toHaveLength(1);
+    expect((syncs[0]?.args as { desiredEmojis: string[] }).desiredEmojis).toEqual(['🇺🇸']);
   });
 });
 

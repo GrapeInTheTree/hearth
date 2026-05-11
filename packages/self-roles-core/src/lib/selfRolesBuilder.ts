@@ -16,7 +16,7 @@ import { selfRoles as i18n } from '../i18n/index.js';
 
 export interface SelfRolesPayload extends SelfRolesMessagePayload {
   /** Emoji strings, ordered by position, ready to feed to
-   *  gateway.addMessageReactions after the message is posted. */
+   *  gateway.syncBotReactions after the message is posted/edited. */
   readonly reactions: readonly string[];
 }
 

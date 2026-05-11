@@ -203,13 +203,13 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve();
   }
 
-  public addMessageReactions(
+  public syncBotReactions(
     channelId: string,
     messageId: string,
-    emojis: readonly string[],
+    desiredEmojis: readonly string[],
   ): Promise<void> {
-    this.record('addMessageReactions', { channelId, messageId, emojis });
-    this.maybeThrow('addMessageReactions');
+    this.record('syncBotReactions', { channelId, messageId, desiredEmojis });
+    this.maybeThrow('syncBotReactions');
     return Promise.resolve();
   }
 

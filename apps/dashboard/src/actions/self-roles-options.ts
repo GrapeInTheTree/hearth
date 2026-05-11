@@ -7,7 +7,7 @@ import {
   type SelfRolesOptionInputType as SelfRolesOptionInput,
   SelfRolesOptionInputSchema,
 } from '@hearth/self-roles-core';
-import { err, isErr, ok } from '@hearth/shared';
+import { type ActionError, type Result, err, isErr, ok } from '@hearth/shared';
 import { revalidatePath } from 'next/cache';
 
 import type { SelfRolesActionResult } from './self-roles.js';
@@ -237,11 +237,16 @@ interface RemoveOptionArgs {
   readonly guildId: string;
   readonly panelId: string;
   readonly optionId: string;
+  /** When true, also revoke the option's role from every audit-log-derived
+   *  holder before the row is deleted. The confirmation modal uses
+   *  countSelfRolesOptionHolders to surface the affected user count
+   *  before the operator opts in. */
+  readonly cleanupRoles?: boolean;
 }
 
 export async function removeSelfRolesOption(
   args: RemoveOptionArgs,
-): Promise<SelfRolesActionResult<{ removedId: string }>> {
+): Promise<SelfRolesActionResult<{ removedId: string; revokedCount: number }>> {
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
 
@@ -254,6 +259,30 @@ export async function removeSelfRolesOption(
     return err({ code: 'NOT_FOUND', message: 'Self-roles panel not found.' });
   }
 
+  const [option] = await dbDrizzle
+    .select()
+    .from(schema.selfRolesOption)
+    .where(eq(schema.selfRolesOption.id, args.optionId))
+    .limit(1);
+  if (option === undefined || option.panelId !== args.panelId) {
+    return err({ code: 'NOT_FOUND', message: 'Option not found on this panel.' });
+  }
+
+  // Role revokes run on the bot before the DB delete so the audit log
+  // (which is about to cascade away with the option) is still
+  // queryable for the holder list. The bot endpoint reads the same
+  // SelfRolesEvent table and walks the holders sequentially — one HTTP
+  // round-trip from here regardless of how many holders there are.
+  let revokedCount = 0;
+  if (args.cleanupRoles === true) {
+    const revoke = await callBot<{ revokedCount: number }>({
+      path: `/internal/self-roles/${args.panelId}/options/${args.optionId}/revoke-holders`,
+      method: 'POST',
+      body: {},
+    });
+    if (!isErr(revoke)) revokedCount = revoke.value.revokedCount;
+  }
+
   await dbDrizzle
     .delete(schema.selfRolesOption)
     .where(eq(schema.selfRolesOption.id, args.optionId));
@@ -261,13 +290,49 @@ export async function removeSelfRolesOption(
   const sync = await syncPanelToDiscord({ guildId: args.guildId, panelId: args.panelId });
   if (sync.failed) {
     return ok({
-      value: { removedId: args.optionId },
+      value: { removedId: args.optionId, revokedCount },
       discordSyncFailed: true,
       discordSyncMessage: sync.message,
     });
   }
   return ok({
-    value: { removedId: args.optionId },
+    value: { removedId: args.optionId, revokedCount },
     discordSyncFailed: false,
   });
+}
+
+/**
+ * Count of audit-log-derived holders for an option's role. Used by the
+ * remove-option confirmation modal so operators see "X users currently
+ * hold this role" before opting into a cleanup-on-delete.
+ */
+export async function countSelfRolesOptionHolders(args: {
+  readonly guildId: string;
+  readonly panelId: string;
+  readonly optionId: string;
+}): Promise<Result<number, ActionError>> {
+  const auth = await authorizeGuild(args.guildId);
+  if (isErr(auth)) return err(auth.error);
+  const holders = await getOptionHolders(args.optionId);
+  return ok(holders.length);
+}
+
+async function getOptionHolders(optionId: string): Promise<readonly string[]> {
+  const events = await dbDrizzle
+    .select({
+      userId: schema.selfRolesEvent.userId,
+      action: schema.selfRolesEvent.action,
+    })
+    .from(schema.selfRolesEvent)
+    .where(eq(schema.selfRolesEvent.optionId, optionId));
+  const netByUser = new Map<string, number>();
+  for (const e of events) {
+    const delta = e.action === 'granted' ? 1 : e.action === 'revoked' ? -1 : 0;
+    if (delta !== 0) netByUser.set(e.userId, (netByUser.get(e.userId) ?? 0) + delta);
+  }
+  const holders: string[] = [];
+  for (const [userId, net] of netByUser) {
+    if (net > 0) holders.push(userId);
+  }
+  return holders;
 }

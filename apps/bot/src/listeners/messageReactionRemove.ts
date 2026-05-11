@@ -1,3 +1,4 @@
+import { SelfRolesAction } from '@hearth/database';
 import { Events, Listener } from '@sapphire/framework';
 import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 
@@ -54,6 +55,20 @@ export class MessageReactionRemoveListener extends Listener<typeof Events.Messag
         { err: result.error, panel: reaction.message.id, emoji: emojiKey },
         'self-roles reaction remove failed unexpectedly',
       );
+      return;
     }
+    this.container.logger.info(
+      {
+        action: result.value.action,
+        userId: user.id,
+        emoji: emojiKey,
+        messageId: reaction.message.id,
+        guildId: reaction.message.guildId,
+        roleId: result.value.roleId,
+      },
+      result.value.action === SelfRolesAction.revoked
+        ? 'self-roles role revoked'
+        : 'self-roles remove noop (role op rejected or emoji not bound)',
+    );
   }
 }

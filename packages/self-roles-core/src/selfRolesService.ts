@@ -230,7 +230,7 @@ export class SelfRolesService {
       // panel back to "pending". Per-option failures surface later when
       // users try to use them.
       await this.gateway
-        .addMessageReactions(panel.channelId, messageId, payload.reactions)
+        .syncBotReactions(panel.channelId, messageId, payload.reactions)
         .catch(() => undefined);
     }
     return ok({ messageId, previousMessageId });
@@ -364,6 +364,69 @@ export class SelfRolesService {
       .returning();
     if (updated === undefined) return err(new NotFoundError(i18n.errors.optionNotFound));
     return ok(updated);
+  }
+
+  /**
+   * Audit-log derived list of users currently holding the option's role —
+   * net-positive grants (granted - revoked > 0) according to the bot's
+   * history. Does NOT consult Discord, so users who got the role via
+   * manual admin assignment are missed; conversely, users who had the
+   * role removed by an admin outside the bot still show up here and the
+   * subsequent revoke call is a Discord no-op. Sufficient for the
+   * common case (operator deletes a self-roles option and wants the
+   * roles it ever handed out cleaned up).
+   */
+  public async getOptionHolders(optionId: string): Promise<readonly string[]> {
+    const events = await this.db
+      .select({
+        userId: schema.selfRolesEvent.userId,
+        action: schema.selfRolesEvent.action,
+      })
+      .from(schema.selfRolesEvent)
+      .where(eq(schema.selfRolesEvent.optionId, optionId));
+    const netByUser = new Map<string, number>();
+    for (const e of events) {
+      const delta =
+        e.action === SelfRolesAction.granted ? 1 : e.action === SelfRolesAction.revoked ? -1 : 0;
+      if (delta !== 0) netByUser.set(e.userId, (netByUser.get(e.userId) ?? 0) + delta);
+    }
+    const holders: string[] = [];
+    for (const [userId, net] of netByUser) {
+      if (net > 0) holders.push(userId);
+    }
+    return holders;
+  }
+
+  /**
+   * Best-effort revoke of an option's role from every audit-log-derived
+   * holder. The dashboard's "Remove option" modal calls this *before*
+   * the row is deleted (audit log cascades on option delete, so we'd
+   * lose the holder list otherwise). Discord-side rejections (Manage
+   * Roles missing, role hierarchy, unknown member) are swallowed — the
+   * returned count reflects only successful revokes so the dashboard
+   * toast can name "revoked from N of M users".
+   */
+  public async revokeRoleFromOptionHolders(
+    optionId: string,
+  ): Promise<Result<{ revokedCount: number }, NotFoundError>> {
+    const existing = await this.findOption(optionId);
+    if (existing === undefined) return err(new NotFoundError(i18n.errors.optionNotFound));
+    const panel = await this.findPanel(existing.panelId);
+    if (panel === undefined) return err(new NotFoundError(i18n.errors.panelNotFound));
+
+    const holders = await this.getOptionHolders(optionId);
+    let revokedCount = 0;
+    for (const userId of holders) {
+      try {
+        await this.gateway.removeRoleFromMember(panel.guildId, userId, existing.roleId);
+        revokedCount += 1;
+      } catch (error) {
+        if (!(error instanceof DiscordApiError)) {
+          throw error;
+        }
+      }
+    }
+    return ok({ revokedCount });
   }
 
   public async removeOption(
@@ -531,26 +594,23 @@ export class SelfRolesService {
         .where(eq(schema.selfRolesPanel.id, panel.id));
       if (payload.reactions.length > 0) {
         await this.gateway
-          .addMessageReactions(panel.channelId, messageId, payload.reactions)
+          .syncBotReactions(panel.channelId, messageId, payload.reactions)
           .catch(() => undefined);
       }
       return { messageId, recreated: true };
     }
     try {
       await this.gateway.editSelfRolesMessage(panel.channelId, panel.messageId, payload);
-      // Re-seed the reaction strip on every edit. discord.js's
-      // message.react is idempotent — Discord no-ops when the bot
-      // already has that reaction on the message — so re-adding the
-      // full set on each edit is the simplest way to surface a newly
-      // added option without forcing the operator into a destructive
-      // repost (which wipes existing user reactions). Orphan bot
-      // reactions left over from removed options are harmless: clicks
-      // miss the (panelId, emoji) lookup and audit nothing.
-      if (payload.reactions.length > 0) {
-        await this.gateway
-          .addMessageReactions(panel.channelId, panel.messageId, payload.reactions)
-          .catch(() => undefined);
-      }
+      // Reconcile the reaction strip with the current option set:
+      // syncBotReactions adds anything missing (e.g. a freshly added
+      // option) and strips bot's own orphan reactions from removed
+      // options. User reactions are never touched. Re-adding existing
+      // reactions is a cheap no-op because message.react is idempotent
+      // for the bot's own copy. Empty panels go through this path too
+      // — sync becomes a pure "remove all bot reactions" sweep.
+      await this.gateway
+        .syncBotReactions(panel.channelId, panel.messageId, payload.reactions)
+        .catch(() => undefined);
       return { messageId: panel.messageId, recreated: false };
     } catch {
       // Live message gone — recreate.
@@ -561,7 +621,7 @@ export class SelfRolesService {
         .where(eq(schema.selfRolesPanel.id, panel.id));
       if (payload.reactions.length > 0) {
         await this.gateway
-          .addMessageReactions(panel.channelId, messageId, payload.reactions)
+          .syncBotReactions(panel.channelId, messageId, payload.reactions)
           .catch(() => undefined);
       }
       return { messageId, recreated: true };

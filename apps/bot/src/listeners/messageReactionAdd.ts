@@ -1,3 +1,4 @@
+import { SelfRolesAction } from '@hearth/database';
 import { Events, Listener } from '@sapphire/framework';
 import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 
@@ -67,6 +68,26 @@ export class MessageReactionAddListener extends Listener<typeof Events.MessageRe
         { err: result.error, panel: reaction.message.id, emoji: emojiKey },
         'self-roles reaction add failed unexpectedly',
       );
+      return;
     }
+    // INFO-level breadcrumb on every meaningful outcome — operators can
+    // grep the bot log when a user complains "I clicked but nothing
+    // happened." `noop` is the most useful line here: it usually means
+    // Manage Roles missing or a role-hierarchy violation, which is
+    // exactly when the operator needs visibility. DB audit row carries
+    // the same info but the log lands in the deploy console first.
+    this.container.logger.info(
+      {
+        action: result.value.action,
+        userId: user.id,
+        emoji: emojiKey,
+        messageId: reaction.message.id,
+        guildId: reaction.message.guildId,
+        roleId: result.value.roleId,
+      },
+      result.value.action === SelfRolesAction.granted
+        ? 'self-roles role granted'
+        : 'self-roles add noop (role op rejected or emoji not bound)',
+    );
   }
 }

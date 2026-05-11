@@ -10,6 +10,7 @@ import {
   handleSelfRolesDelete,
   handleSelfRolesRender,
   handleSelfRolesRepost,
+  handleSelfRolesRevokeHolders,
 } from './routes/self-roles.js';
 import {
   handleVerificationDelete,
@@ -150,6 +151,16 @@ function matchRoute(
     return {
       requireAuth: true,
       handle: async () => handleSelfRolesDelete(ctx, panelId, res),
+    };
+  }
+  const selfRolesRevokeHoldersMatch =
+    /^\/internal\/self-roles\/([^/]+)\/options\/([^/]+)\/revoke-holders$/.exec(pathname);
+  if (method === 'POST' && selfRolesRevokeHoldersMatch !== null) {
+    const [, panelId, optionId] = selfRolesRevokeHoldersMatch;
+    if (panelId === undefined || optionId === undefined) return null;
+    return {
+      requireAuth: true,
+      handle: async () => handleSelfRolesRevokeHolders(ctx, panelId, optionId, res),
     };
   }
 

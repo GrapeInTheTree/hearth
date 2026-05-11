@@ -312,18 +312,43 @@ export class DjsDiscordGateway implements DiscordGateway {
     });
   }
 
-  public async addMessageReactions(
+  public async syncBotReactions(
     channelId: string,
     messageId: string,
-    emojis: readonly string[],
+    desiredEmojis: readonly string[],
   ): Promise<void> {
-    await this.wrap('addMessageReactions', async () => {
+    await this.wrap('syncBotReactions', async () => {
       const channel = await this.fetchTextChannel(channelId);
       const message = await channel.messages.fetch(messageId);
+      const botId = this.client.user?.id;
+
+      // Compute the desired set in the same emoji-key shape we use for
+      // DB identity (raw Unicode or `<:name:id>` for custom), then walk
+      // the message's current reactions to spot orphans the bot still
+      // holds from a removed option.
+      const desired = new Set(desiredEmojis);
+      if (botId !== undefined) {
+        for (const reaction of message.reactions.cache.values()) {
+          if (!reaction.me) continue;
+          const key =
+            reaction.emoji.id !== null
+              ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
+              : (reaction.emoji.name ?? '');
+          if (!desired.has(key)) {
+            // Orphan — strip only the bot's own copy of this reaction.
+            // User reactions on the same emoji (shouldn't happen for a
+            // just-removed option, but defensive) are left alone.
+            await reaction.users.remove(botId).catch(() => undefined);
+          }
+        }
+      }
+
       // Sequential rather than parallel: Discord rate-limits reaction
       // adds, and serial order also matches the operator's configured
       // option `position` (we receive emojis pre-sorted upstream).
-      for (const emoji of emojis) {
+      // message.react is idempotent for the bot's own reactions, so
+      // re-adding existing ones is a cheap no-op rather than a duplicate.
+      for (const emoji of desiredEmojis) {
         // Best-effort per emoji — a single 10014 (unknown emoji) on a
         // custom emoji shouldn't block the rest of the strip.
         await message.react(emoji).catch(() => undefined);

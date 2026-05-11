@@ -6,6 +6,40 @@ import { sendError, sendJson } from '../json.js';
 import type { InternalApiContext } from '../types.js';
 
 /**
+ * POST /internal/self-roles/:panelId/options/:optionId/revoke-holders
+ *
+ * Best-effort revoke of the option's role from every audit-log-derived
+ * holder. Used by the dashboard's "Remove option" modal when the
+ * operator opts into role cleanup. The option row is *not* deleted here
+ * — the dashboard runs its own DELETE afterwards (so cache revalidation
+ * stays under its control). Returns the count of successful revokes so
+ * the success toast can name the number ("Removed and revoked from N
+ * users").
+ */
+export async function handleSelfRolesRevokeHolders(
+  ctx: InternalApiContext,
+  _panelId: string,
+  optionId: string,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const result = await ctx.selfRoles.revokeRoleFromOptionHolders(optionId);
+    if (!result.ok) {
+      const code = result.error instanceof NotFoundError ? 'not_found' : 'internal';
+      sendError(res, code, result.error.message);
+      return;
+    }
+    sendJson(res, 200, result.value);
+  } catch (e) {
+    if (e instanceof DiscordApiError) {
+      sendError(res, 'discord_unavailable', e.message);
+      return;
+    }
+    throw e;
+  }
+}
+
+/**
  * POST /internal/self-roles/:panelId/render
  *
  * Idempotent re-render of a self-roles panel's Discord message + reaction
