@@ -10,11 +10,12 @@ import { z } from 'zod';
 const EMBED_TITLE_MAX = 256;
 const EMBED_DESC_MAX = 4000;
 
-// Self-roles options surface as message reactions. Discord renders ~20
-// distinct reactions before the strip wraps, but UX comfort drops sharply
-// past 10. The form caps at 10 (5 per "row" visually) — operators with
-// more language buckets can split across multiple panels.
-const MAX_OPTIONS_PER_PANEL = 10;
+// Self-roles options surface as message reactions. Discord caps a single
+// message at 20 distinct emoji reactions (REST returns code 30010 on the
+// 21st). We match that hard ceiling — Discord wraps the strip into a
+// second row past ~8 emoji, which is the same behaviour every other
+// reaction-roles bot exposes.
+const MAX_OPTIONS_PER_PANEL = 20;
 
 // Label is visible only in the embed body (option_line). Discord rejects
 // embed fields longer than 256 chars; we cap shorter to leave room for the

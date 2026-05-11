@@ -160,7 +160,7 @@ export function SelfRolesOptionForm({
           id="option-position"
           type="number"
           min={0}
-          max={9}
+          max={19}
           aria-invalid={errors.position !== undefined}
           {...register('position', { valueAsNumber: true })}
         />
@@ -168,7 +168,7 @@ export function SelfRolesOptionForm({
           <p className="text-xs text-[color:var(--color-danger)]">{errors.position.message}</p>
         ) : (
           <p className="text-xs text-[color:var(--color-fg-muted)]">
-            Slot 0-9 — controls the reaction strip order (left-to-right). Must be unique per panel.
+            Slot 0-19 — controls the reaction strip order (left-to-right). Must be unique per panel.
           </p>
         )}
       </div>

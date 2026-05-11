@@ -26,7 +26,7 @@ import { selfRoles as i18n } from './i18n/index.js';
 import { buildSelfRolesPayload } from './lib/selfRolesBuilder.js';
 
 const PLACEHOLDER_MESSAGE_ID = 'pending';
-const MAX_OPTIONS_PER_PANEL = 10;
+const MAX_OPTIONS_PER_PANEL = 20;
 
 export interface SelfRolesPanelInput {
   readonly guildId: string;

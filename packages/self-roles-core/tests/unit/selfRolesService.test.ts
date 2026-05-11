@@ -215,8 +215,8 @@ describe('SelfRolesService.addOption', () => {
     expect(result.value.roleId).toBe(ROLE_US);
   });
 
-  it('rejects when the panel is full (10 options)', async () => {
-    for (let i = 0; i < 10; i++) {
+  it('rejects when the panel is full (20 options — Discord cap)', async () => {
+    for (let i = 0; i < 20; i++) {
       await service.addOption(
         panelId,
         optionInput({
@@ -228,7 +228,7 @@ describe('SelfRolesService.addOption', () => {
     }
     const overflow = await service.addOption(
       panelId,
-      optionInput({ label: 'Eleventh', emoji: 'e10', position: 10 }),
+      optionInput({ label: 'Twenty-first', emoji: 'e20', position: 20 }),
     );
     expect(overflow.ok).toBe(false);
   });

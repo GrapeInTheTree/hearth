@@ -150,9 +150,9 @@ export class SelfRolesCommand extends Command {
                 .addIntegerOption((opt) =>
                   opt
                     .setName('position')
-                    .setDescription('Slot 0-9 (left-to-right). Must be unique per panel.')
+                    .setDescription('Slot 0-19 (left-to-right). Must be unique per panel.')
                     .setMinValue(0)
-                    .setMaxValue(9)
+                    .setMaxValue(19)
                     .setRequired(true),
                 ),
             )
@@ -183,9 +183,9 @@ export class SelfRolesCommand extends Command {
                 .addIntegerOption((opt) =>
                   opt
                     .setName('position')
-                    .setDescription('New slot 0-9.')
+                    .setDescription('New slot 0-19.')
                     .setMinValue(0)
-                    .setMaxValue(9)
+                    .setMaxValue(19)
                     .setRequired(false),
                 ),
             )

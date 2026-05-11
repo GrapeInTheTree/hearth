@@ -16,7 +16,7 @@ export const selfRoles = {
   errors: {
     panelNotFound: 'Self-roles panel not found.',
     optionNotFound: 'Option not found on this self-roles panel.',
-    optionLimitReached: 'A self-roles panel can have at most 10 options.',
+    optionLimitReached: 'A self-roles panel can have at most 20 options.',
     duplicateLabel: 'An option with this label already exists on this panel.',
     duplicateEmoji: 'An option with this emoji already exists on this panel.',
     duplicatePosition: 'An option already exists at this position.',

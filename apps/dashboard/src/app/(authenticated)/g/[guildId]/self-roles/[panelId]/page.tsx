@@ -113,10 +113,10 @@ export default async function SelfRolesDetailPage({
             <div className="flex flex-col gap-1.5">
               <CardTitle className="text-base">Options</CardTitle>
               <CardDescription>
-                Up to 10 emoji-role bindings per panel. Each must have a unique emoji and slot.
+                Up to 20 emoji-role bindings per panel. Each must have a unique emoji and slot.
               </CardDescription>
             </div>
-            <Button asChild size="sm" disabled={panel.options.length >= 10}>
+            <Button asChild size="sm" disabled={panel.options.length >= 20}>
               <Link href={`/g/${guildId}/self-roles/${panelId}/options/new`}>Add option</Link>
             </Button>
           </CardHeader>

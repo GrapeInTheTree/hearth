@@ -14,7 +14,7 @@ import type { SelfRolesActionResult } from './self-roles.js';
 
 import { authorizeGuild } from '@/lib/server-auth';
 
-const MAX_OPTIONS_PER_PANEL = 10;
+const MAX_OPTIONS_PER_PANEL = 20;
 
 export type { SelfRolesActionResult };
 
@@ -56,7 +56,7 @@ export async function addSelfRolesOption(
   if (panel.options.length >= MAX_OPTIONS_PER_PANEL) {
     return err({
       code: 'CONFLICT',
-      message: 'A self-roles panel can have at most 10 options.',
+      message: 'A self-roles panel can have at most 20 options.',
     });
   }
   if (panel.options.some((o) => o.label === parsed.data.label)) {
