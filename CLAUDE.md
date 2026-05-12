@@ -240,14 +240,16 @@ hearth/
 
 ### Phase 3 — Self Roles + Welcome (D+17~22)
 
-- Trigger pattern is **domain-by-domain** (supersedes the earlier blanket "reaction roles are legacy" rule):
-  - **Button** for flows that need ephemeral feedback, single-answer clicks, or modal chaining — verification, welcome, moderation.
-  - **Reaction** for multi-select toggles with silent application — self-roles, polls.
-  - The domain service layer stays trigger-agnostic, so the same service handles both styles.
+- **Trigger pattern is domain-by-domain (3 triggers ratified, 2026-05-12):**
+  - **Button** — ephemeral feedback / single-answer clicks / modal chaining (verification, welcome, moderation).
+  - **Reaction** — silent multi-select toggle / visual discoverability (self-roles flag panels, polls).
+  - **Select menu (StringSelectMenu)** — single OR multi-select dropdown / mobile-friendly / 25+ options / "list of choices" UX (role-picker, country pickers, future moderator assign).
+  - Service layer stays trigger-agnostic — same domain doesn't try to host two triggers (branch cost > integration benefit). New domain = new package + best-fit trigger.
 - Exclusivity (self-roles): none / single / multi (min~max).
 - Welcome: channel + DM with variable substitution (`{user}`, `{server}`, `{membercount}`) + autorole.
 - ✅ **Verification panel** — one panel with up to 5 emoji buttons, one correct answer grants one role. Button pattern. Audit log records the outcome (`success` / `wrong_answer` / `already_verified` / `role_assign_failed`). Full dashboard CRUD plus 9 slash subcommands.
 - ✅ **Self-roles / Language selector (DEFI-661)** — Reaction pattern. Flag-emoji multi-select; removing a reaction revokes the role. Each option carries its own role (per-option `roleId`). Lives in `@hearth/self-roles-core` mirroring the verification-core layout. Audit log records `'granted' | 'revoked' | 'noop'`. Full dashboard CRUD plus 8 slash subcommands. Bot pre-seeds the reaction strip after every render/repost. `GuildMessageReactions` intent + `Partials.Message/Reaction` are required (non-privileged).
+- ✅ **Role picker (StringSelectMenu)** — Select-menu pattern. v1 single-select dropdown — user opens, picks one option, gets the bound role; re-selecting a different option revokes the previous and grants the new (diff-based `handleSelection`). Lives in `@hearth/role-picker-core`. Audit log records four actions (`granted` / `revoked` / `role_assign_failed` / `role_revoke_failed`) — two failure variants because the diff knows direction. customId carries only `panelId`; selected option ids ride in `interaction.values[]` (Discord's 100-char customId budget can't hold an option-id array). Schema reserves `selectionMode`/`minValues`/`maxValues` columns for v2 multi-select unlock without a migration. Full dashboard CRUD plus 8 slash subcommands.
 
 ### Phase 4 — Leveling + Logging (D+22~30)
 
@@ -491,10 +493,34 @@ Polish round 직후 code-design audit에서 식별된 5개 부채를 5개 PR로 
 
 남은 7개 `window.confirm` 호출을 self-roles Polish round의 Dialog primitive 패턴으로 일괄 교체. tickets repost/delete/remove-type + verification repost/delete/remove-option + self-roles delete 모두 같은 form factor: header → bullet 컨텍스트(유지/사라짐) → 파괴적 작업이면 `AlertTriangle` "This cannot be undone" callout → footer Cancel/Confirm. 코드베이스 전체에 `window.confirm` 0건. 단일 commit `48dc8e2`, 7 components, +530/-121 LOC. typecheck/lint/test(97)/build 그린.
 
+### Role-picker module (StringSelectMenu, 2026-05-12, PR #48-#52)
+
+세 번째 trigger 도메인. PM이 DEFI-661 라이브 검증 후 "단일 선택 모드 가능할까?" 물어본 게 시작 — 답으로 self-roles에 single-mode 보태는 것보다 Discord 네이티브 **StringSelectMenu** 도메인 패키지를 통째로 신설. 모바일 UX 훨씬 깔끔 + 25 옵션 (vs reaction 20) + 단일/다중 native 지원.
+
+5 PR sequential merge, ~3,400 LOC, 35 신규 unit tests (340 → 375 green):
+
+| #   | PR  | 제목                                                                         | 한 줄                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | --- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | #48 | `feat(db): role-picker schema + drizzle migration 0004`                      | 3 schema 파일 (RolePickerPanel/Option/Event) + `0004_role_picker.sql`. `selectionMode`/`minValues`/`maxValues`/`customId` 컬럼 reserve. FK SET NULL + snapshot 컬럼 (Q3 패턴). 4 audit actions (`granted`/`revoked`/`role_assign_failed`/`role_revoke_failed`)                                                                                                                                                                                         |
+| 2   | #49 | `feat(core): @hearth/role-picker-core package + gateway port extension`      | 신규 도메인 패키지. 165-line facade + 3 operation 클래스. 핵심: diff-based `handleSelection` — `toGrant = selectedValues \ currentlyHeld`, audit-log SUM aggregation (Q2 패턴). `RolePickerGateway` sub-interface 추가 → composite `T & V & S & R`. customId registry에 `role-picker:submit` 등록 (panelId만 인코딩). 35 unit tests PGlite + FakeGateway. djs gateway 3 메서드 구현도 같이 (composite widening 영향 받는 모든 implementor 동시 update) |
+| 3   | #50 | `feat(role-picker): bot select-menu handler + slash + internal API`          | Sapphire `InteractionHandlerTypes.SelectMenu` 핸들러 (`select-menus/role-picker-submit.ts` — 신규 폴더). 8 subcommand 슬래시. 4 internal API routes. container DI + types. Dockerfile에 build chain step + COPY (PR #21 lesson). 5 testcontainers 시나리오                                                                                                                                                                                             |
+| 4   | #51 | `feat(role-picker): dashboard CRUD + StringSelectMenu preview + sidebar nav` | 6 RSC pages (list/new/detail/edit/option-new/option-edit) + 2 action 파일 (5 panel + 3 option + countHolders) + 7 components (panel-form, option-form, StringSelectMenu CSS mock preview, 3 Dialog 모달, retry-sync). Sidebar `ListChecks` icon. Dashboard Dockerfile에 build chain step (PR #21)                                                                                                                                                      |
+| 5   | #52 | `chore(role-picker): CLAUDE.md ADR ratification + 3-place doc sync`          | §4 Phase 3 ADR final form (3 triggers ratified) + §5 prohibited rules + §8 entry + memory + vault                                                                                                                                                                                                                                                                                                                                                      |
+
+**핵심 결정 (ADR — 변경 시 decision memo update):**
+
+- **D1. 새 패키지** (self-roles에 single-mode 안 보탬). trigger surface 다르고 (component vs reaction, atomic values[] vs per-event emoji) 모든 helper에 branch 비용 발생. self-roles facade 165-line이 4번째 ops 파일 흡수하면 PR #43에서 분리한 concerns 다시 합쳐짐.
+- **D3. Diff-based `handleSelection`** — replace-all 거부. No-op re-select 시 role write 0건. audit narrative 보존 (실제 변경만 row 생성). v2 multi-select forward-compat.
+- **D5. customId panelId only** — selected ids는 `interaction.values[]`로 받음. Discord 100-char customId 한도.
+- **D8. Audit retention** — FK `SET NULL` on optionId + snapshot 컬럼. Q3 self-roles 패턴 그대로.
+- **D9. 25-option cap** — Discord StringSelectMenu hard limit. self-roles 20-cap에서 의도적 fork (reaction 한도 vs StringSelectMenu 한도, 다른 platform constraint).
+
+**라이브 검증 (PR-3 docker compose smoke):** `/rolepicker create #channel "Pick your role"` → option add ×3 (Korean / English / Japanese) → dropdown 클릭 → 옵션 선택 → ephemeral "Added: Korean." + Discord role granted → 다른 옵션 선택 → ephemeral "Removed: Korean. Added: English." + role swap → audit log에 4 rows (granted Korean, revoked Korean, granted English, ...).
+
 **최종 상태:**
 
-- main = `48dc8e2`
-- DEFI-661 풀스택 (5 stacked) + Polish round (3 follow-up) + Quality round (5 backlog fix) + Dashboard modal sweep (1) = **총 14 PR**
+- main = `2c52dff` (PR-4 dashboard merge). PR-5 docs sync 머지 후 `<future-sha>`.
+- DEFI-661 풀스택 (5 stacked) + Polish round (3 follow-up) + Quality round (5 backlog fix) + Dashboard modal sweep (1) + Role-picker domain (5 PR) = **총 19 PR**
 - 운영 시작 OK — VM 재배포 후 PM 검증 가능 상태. 모든 진단된 부채 해소
 
 **이전 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
