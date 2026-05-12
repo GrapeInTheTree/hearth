@@ -63,25 +63,11 @@ export function ReactionRolesPreview({
                 <span className="italic text-[color:var(--color-fg-muted)]">(no description)</span>
               )}
             </p>
-            {ordered.length > 0 ? (
-              // Mirror the Discord embed body: emoji + bold label, no role
-              // pill. The role-pill rendered above made the message noisy
-              // and PM asked to drop it (2026-05-12 follow-up). Operators
-              // can still see the option↔role binding on the panel
-              // detail page; users figure it out from the label.
-              <div className="flex flex-col gap-1 pt-2 text-sm">
-                {ordered.map((o, i) => (
-                  <div key={o.id ?? i} className="flex items-baseline gap-2">
-                    <span aria-hidden="true">{o.emoji}</span>
-                    <span className="font-semibold">{o.label}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="pt-2 text-xs italic text-[color:var(--color-fg-muted)]">
-                No options yet — bindings appear here once you add options.
-              </p>
-            )}
+            {/* Mirror Discord embed body: title + description only.
+                PM asked (2026-05-12 follow-up) to drop the auto-generated
+                option line list entirely — the pre-added reactions
+                already surface the emojis, and operators tune the
+                description copy to explain the rules. */}
             {footerText !== undefined && footerText !== '' ? (
               <p className="text-xs text-[color:var(--color-fg-muted)]">{footerText}</p>
             ) : null}

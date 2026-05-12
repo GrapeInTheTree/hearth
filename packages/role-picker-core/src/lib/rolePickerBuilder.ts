@@ -9,12 +9,16 @@ import {
   ComponentType,
 } from 'discord-api-types/v10';
 
-import { rolePicker as i18n } from '../i18n/index.js';
-
 // Role-picker message payload — embed + a single ActionRow containing
 // one StringSelectMenu. The dropdown's `value` for each option is the
 // option's cuid2 id; the bot's interaction handler looks the id up
 // directly when the user submits.
+//
+// The embed body is the operator's embedDescription unchanged — no
+// option line list is appended. PM asked (2026-05-12) to drop it
+// because the dropdown itself surfaces every option label + emoji
+// natively; duplicating them as a textual list under the embed body
+// was redundant and noisy.
 //
 // Output is plain JSON (discord-api-types shapes) so this module — and
 // transitively all of @hearth/role-picker-core — never imports the
@@ -38,14 +42,10 @@ export function buildRolePickerPayload(
   branding: Pick<Branding, 'color'>,
 ): RolePickerPayload {
   const ordered = [...options].sort((a, b) => a.position - b.position);
-  const lines = ordered.map(renderOptionLine);
-
-  const description =
-    lines.length > 0 ? [panel.embedDescription, '', ...lines].join('\n') : panel.embedDescription;
 
   const embed: APIEmbed = {
     title: panel.embedTitle,
-    description,
+    description: panel.embedDescription,
     color: branding.color,
   };
 
@@ -76,13 +76,6 @@ export function buildRolePickerPayload(
     embeds: [embed],
     components: ordered.length > 0 ? [row] : [],
   };
-}
-
-function renderOptionLine(option: RolePickerOption): string {
-  return i18n.optionLine
-    .replace('{emoji}', option.emoji ?? '•')
-    .replace('{label}', option.label)
-    .replace('{roleId}', option.roleId);
 }
 
 // `<a?:name:id>` → APIMessageComponentEmoji `{id, name, animated?}`.

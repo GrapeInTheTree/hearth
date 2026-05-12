@@ -11,8 +11,6 @@ export const reactionRoles = {
       'React to this message with the emoji that matches a role you want. Remove your reaction to give the role back.',
   },
 
-  optionLine: '{emoji} **{label}**',
-
   errors: {
     panelNotFound: 'Reaction-roles panel not found.',
     optionNotFound: 'Option not found on this reaction-roles panel.',

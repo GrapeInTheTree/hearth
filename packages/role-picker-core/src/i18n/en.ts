@@ -12,8 +12,6 @@ export const rolePicker = {
     defaultPlaceholder: 'Pick a role…',
   },
 
-  optionLine: '{emoji} **{label}**',
-
   ephemeral: {
     grantedOnly: 'Added: {labels}.',
     revokedOnly: 'Removed: {labels}.',
