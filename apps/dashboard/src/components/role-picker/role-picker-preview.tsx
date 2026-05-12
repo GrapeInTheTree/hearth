@@ -1,12 +1,15 @@
 'use client';
 
-import { ChevronDown, Eye } from 'lucide-react';
+import { ChevronDown, Eye, X } from 'lucide-react';
 
 interface RolePickerPreviewProps {
   readonly title: string;
   readonly description: string;
   readonly placeholder: string;
   readonly footerText?: string | undefined;
+  /** Discord StringSelectMenu `min_values`. When 0, the dropdown renders
+   *  a native "Clear selection" affordance below the option list. */
+  readonly minValues?: number;
   readonly options?: readonly {
     readonly id?: string;
     readonly label: string;
@@ -31,10 +34,12 @@ export function RolePickerPreview({
   description,
   placeholder,
   footerText,
+  minValues,
   options = [],
 }: RolePickerPreviewProps): React.JSX.Element {
   const accent = 'var(--color-accent)';
   const ordered = [...options].sort((a, b) => a.position - b.position);
+  const showClearAffordance = minValues === 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -114,6 +119,15 @@ export function RolePickerPreview({
             No options yet — add options to populate the dropdown.
           </p>
         )}
+        {showClearAffordance && ordered.length > 0 ? (
+          <div
+            className="flex items-center gap-1.5 border-t px-3 py-2 text-xs text-[color:var(--color-fg-muted)]"
+            aria-label="Discord renders a native Clear selection link here"
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+            <span>Clear selection</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

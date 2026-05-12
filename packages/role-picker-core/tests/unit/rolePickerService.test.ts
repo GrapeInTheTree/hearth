@@ -1,4 +1,4 @@
-import { eq, RolePickerAction, schema } from '@hearth/database';
+import { asc, eq, RolePickerAction, schema } from '@hearth/database';
 import { ConflictError, NotFoundError, ValidationError } from '@hearth/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -62,12 +62,16 @@ describe('RolePickerService.createPanel', () => {
     expect(res.value.panel.customId).toContain(`"panelId":"${res.value.panel.id}"`);
   });
 
-  it('defaults selectionMode / minValues / maxValues to single / 1 / 1', async () => {
+  it('defaults selectionMode / minValues / maxValues to single / 0 / 1', async () => {
+    // minValues defaults to 0 so Discord renders a native
+    // "Clear selection" affordance in the dropdown — users can drop
+    // their role without an admin. Operators opt out per-panel via
+    // the dashboard "Allow users to clear" checkbox.
     harness = await setup();
     const res = await harness.service.createPanel(panelInput());
     if (!res.ok) throw res.error;
     expect(res.value.panel.selectionMode).toBe('single');
-    expect(res.value.panel.minValues).toBe(1);
+    expect(res.value.panel.minValues).toBe(0);
     expect(res.value.panel.maxValues).toBe(1);
   });
 
@@ -356,6 +360,39 @@ describe('RolePickerService.handleSelection', () => {
     expect(res.value.grantedCount).toBe(0);
     expect(res.value.revokedCount).toBe(0);
     expect(res.value.failedCount).toBe(0);
+  });
+
+  it('revokes the held role when the user submits an empty selection (Clear)', async () => {
+    // Backs the min_values=0 path. Discord's native "Clear selection"
+    // affordance fires interaction.values=[]; service must treat that as
+    // "revoke everything currently held" without any special-case branch.
+    harness = await setup();
+    const { panelId, optionKoId } = await seedThreeOptions();
+    await harness.service.handleSelection({
+      panelId,
+      userId: USER_A,
+      selectedValues: [optionKoId],
+    });
+    const res = await harness.service.handleSelection({
+      panelId,
+      userId: USER_A,
+      selectedValues: [],
+    });
+    if (!res.ok) throw res.error;
+    expect(res.value.grantedCount).toBe(0);
+    expect(res.value.revokedCount).toBe(1);
+    expect(res.value.failedCount).toBe(0);
+    expect(res.value.revokedLabels).toEqual(['Korean']);
+
+    const events = await harness.testDb.db
+      .select()
+      .from(schema.rolePickerEvent)
+      .where(eq(schema.rolePickerEvent.panelId, panelId))
+      .orderBy(asc(schema.rolePickerEvent.createdAt));
+    expect(events.map((e) => e.action)).toEqual([
+      RolePickerAction.granted,
+      RolePickerAction.revoked,
+    ]);
   });
 
   it('emits role_assign_failed audit when the gateway rejects the grant', async () => {

@@ -32,6 +32,7 @@ interface RolePickerPanelFormProps {
     readonly embedTitle: string;
     readonly embedDescription: string;
     readonly placeholder: string;
+    readonly minValues: number;
   };
 }
 
@@ -41,6 +42,10 @@ const FormSchema = RolePickerPanelInputSchema.extend({
   embedTitle: z.string().min(1, 'Title is required').max(256),
   embedDescription: z.string().min(1, 'Description is required').max(4000),
   placeholder: z.string().min(1, 'Placeholder is required').max(150),
+  // Boolean façade over minValues. When ON: minValues=0, Discord renders
+  // a native "Clear selection" link in the dropdown. When OFF: minValues=1,
+  // strict pick-required. v1 keeps maxValues locked to 1 (single-select).
+  allowClear: z.boolean(),
 });
 type FormValues = z.infer<typeof FormSchema>;
 
@@ -69,6 +74,7 @@ export function RolePickerPanelForm({
       embedDescription:
         initial?.embedDescription ?? 'Open the dropdown below and pick the option you want.',
       placeholder: initial?.placeholder ?? 'Pick a role…',
+      allowClear: initial !== undefined ? initial.minValues === 0 : true,
     },
   });
 
@@ -76,6 +82,7 @@ export function RolePickerPanelForm({
   const description = watch('embedDescription');
   const placeholder = watch('placeholder');
   const channelId = watch('channelId');
+  const allowClear = watch('allowClear');
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -115,6 +122,7 @@ export function RolePickerPanelForm({
 
   async function onSubmit(values: FormValues): Promise<void> {
     try {
+      const minValues = values.allowClear ? 0 : 1;
       const result =
         initial !== undefined
           ? await updateRolePickerPanel({
@@ -124,6 +132,7 @@ export function RolePickerPanelForm({
               embedTitle: values.embedTitle,
               embedDescription: values.embedDescription,
               placeholder: values.placeholder,
+              minValues,
             })
           : await createRolePickerPanel({
               guildId,
@@ -133,6 +142,7 @@ export function RolePickerPanelForm({
                 embedTitle: values.embedTitle,
                 embedDescription: values.embedDescription,
                 placeholder: values.placeholder,
+                minValues,
               },
             });
       if (!result.ok) {
@@ -234,6 +244,23 @@ export function RolePickerPanelForm({
           )}
         </div>
 
+        <div className="grid gap-2 rounded-[var(--radius)] border bg-[color:var(--color-bg-subtle)] p-3">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 cursor-pointer accent-[color:var(--color-accent)]"
+              {...register('allowClear')}
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium">Allow users to clear their selection</span>
+              <span className="text-xs text-[color:var(--color-fg-muted)]">
+                Discord shows a native &ldquo;Clear selection&rdquo; link at the bottom of the
+                dropdown. Users can drop their role without an admin.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Saving…' : initial !== undefined ? 'Save changes' : 'Create panel'}
@@ -242,7 +269,12 @@ export function RolePickerPanelForm({
       </div>
 
       <div className="lg:sticky lg:top-20 lg:self-start">
-        <RolePickerPreview title={title} description={description} placeholder={placeholder} />
+        <RolePickerPreview
+          title={title}
+          description={description}
+          placeholder={placeholder}
+          minValues={allowClear ? 0 : 1}
+        />
       </div>
     </form>
   );

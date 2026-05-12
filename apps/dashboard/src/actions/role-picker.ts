@@ -74,7 +74,10 @@ export async function createRolePickerPanel(
         parsed.data.embedDescription ?? 'Open the dropdown below and pick the option you want.',
       placeholder: parsed.data.placeholder ?? 'Pick a role…',
       selectionMode: parsed.data.selectionMode ?? 'single',
-      minValues: parsed.data.minValues ?? 1,
+      // Default minValues=0 so new panels surface Discord's native
+      // "Clear selection" affordance. Operators can opt out per-panel
+      // via the dashboard form's "Allow users to clear" checkbox.
+      minValues: parsed.data.minValues ?? 0,
       maxValues: parsed.data.maxValues ?? 1,
       customId,
     })
@@ -98,6 +101,10 @@ interface UpdatePanelArgs {
   readonly embedTitle: string | undefined;
   readonly embedDescription: string | undefined;
   readonly placeholder: string | undefined;
+  /** 0 = allow native "Clear selection", 1 = pick-required. Skips
+   *  validation against the broader zod range since the form façade
+   *  only emits 0 or 1 in v1. */
+  readonly minValues: number | undefined;
 }
 
 export async function updateRolePickerPanel(
@@ -111,6 +118,7 @@ export async function updateRolePickerPanel(
   if (args.embedTitle !== undefined) updates.embedTitle = args.embedTitle;
   if (args.embedDescription !== undefined) updates.embedDescription = args.embedDescription;
   if (args.placeholder !== undefined) updates.placeholder = args.placeholder;
+  if (args.minValues !== undefined) updates.minValues = args.minValues;
   if (Object.keys(updates).length > 0) {
     await dbDrizzle
       .update(schema.rolePickerPanel)

@@ -6,7 +6,12 @@ import type { RolePickerAction, RolePickerOption, RolePickerPanel } from '@heart
 export const PLACEHOLDER_MESSAGE_ID = 'pending';
 export const MAX_OPTIONS_PER_PANEL = 25;
 export const DEFAULT_SELECTION_MODE = 'single';
-export const DEFAULT_MIN_VALUES = 1;
+// Default min_values=0 so Discord renders a native "Clear selection"
+// affordance at the bottom of the dropdown. The user picking nothing
+// is a legitimate state — handleSelection's diff (selectedSet \ heldSet)
+// reduces to "revoke everything currently held" without any special-case.
+// Operators can flip to 1 (strict pick-required) per-panel.
+export const DEFAULT_MIN_VALUES = 0;
 export const DEFAULT_MAX_VALUES = 1;
 
 export interface RolePickerPanelInput {

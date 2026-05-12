@@ -63,6 +63,7 @@ export default async function EditRolePickerPage({
               embedTitle: panel.embedTitle,
               embedDescription: panel.embedDescription,
               placeholder: panel.placeholder,
+              minValues: panel.minValues,
             }}
           />
         )}
