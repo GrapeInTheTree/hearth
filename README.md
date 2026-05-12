@@ -15,7 +15,7 @@
   <a href="https://discord.js.org/"><img src="https://img.shields.io/badge/discord.js-14.26-5865F2?logo=discord" alt="discord.js" /></a>
   <a href="https://www.sapphirejs.dev/"><img src="https://img.shields.io/badge/Sapphire-5.5-2E2E2E" alt="Sapphire" /></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-15.5-000000?logo=next.js" alt="Next.js" /></a>
-  <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-7.8-2D3748?logo=prisma" alt="Prisma" /></a>
+  <a href="https://orm.drizzle.team/"><img src="https://img.shields.io/badge/Drizzle-0.45-C5F74F" alt="Drizzle ORM" /></a>
   <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql" alt="Postgres" /></a>
 </p>
 
@@ -60,14 +60,15 @@ The result is a stack that feels like MEE6 to end users but reads like infrastru
 
 ## Status
 
-**Phase 2 (Web Dashboard MVP) — shipped.** End-to-end ticket lifecycle (open / claim / close / reopen / delete) verified on a live Discord server. Operator dashboard runs at the operator's chosen subdomain. Race-safe concurrency via Postgres advisory locks plus a partial unique index. Multi-type panels with operator-driven slash CRUD and a Next.js 15 web UI.
+**Live in production.** Hearth runs on a VM at `community-bot.namusunmul.com` with four domains shipping: tickets, verification, reaction-roles, and role-picker. Operators CRUD everything through the web dashboard or Discord slash commands. Race-safe concurrency via Postgres advisory locks plus partial unique indexes.
 
-| Metric                                                    | Value                                                          |
-| --------------------------------------------------------- | -------------------------------------------------------------- |
-| Unit tests (bot · tickets-core · dashboard)               | **28 · 94 · 40** all passing                                   |
-| Integration tests (testcontainers + Postgres 16)          | **5 / 5** passing                                              |
-| Coverage (lines / branches / funcs / stmts, tickets-core) | **91.7 · 80.8 · 93.9 · 91.3**                                  |
-| Production build                                          | `docker compose up -d --build` → migrate → bootstrap → healthy |
+| Metric                                           | Value                                                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Domain packages                                  | `tickets-core` · `verification-core` · `reaction-roles-core` · `role-picker-core`                            |
+| Unit tests                                       | **369 passing** (tickets 101 · verification 41 · reaction-roles 48 · role-picker 36 · bot 46 · dashboard 97) |
+| Integration tests (testcontainers + Postgres 16) | **8 / 8** passing                                                                                            |
+| Triggers ratified                                | button (verification, welcome) · reaction (reaction-roles, polls) · select-menu (role-picker)                |
+| Production build                                 | `./infra/deploy.sh` → git pull + image build + recreate → healthy in ~30s                                    |
 
 **Next:** Phase 3 — Moderation + AutoMod.
 
@@ -102,18 +103,25 @@ The result is a stack that feels like MEE6 to end users but reads like infrastru
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     @hearth/tickets-core — domain SOT                        │
-│   PanelService · TicketService · GuildConfigService                          │
-│   DiscordGateway port (interface) · zod schemas · i18n bundle                │
-│   discord-api-types only — zero discord.js runtime dependency                │
+│           Domain packages — single source of truth per surface               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│   @hearth/tickets-core         · PanelService · TicketService · ports/      │
+│   @hearth/verification-core    · VerificationService (button trigger)        │
+│   @hearth/reaction-roles-core  · ReactionRolesService (reaction trigger)     │
+│   @hearth/role-picker-core     · RolePickerService (select-menu trigger)     │
+│   ───────────────────────────────────────────────────────────────────────    │
+│   DiscordGateway composite port = T & V & R & P sub-interfaces              │
+│   zod schemas · i18n bundle · discord-api-types only (zero djs runtime)     │
 └────────────────────────────┬────────────────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       @hearth/database (Prisma 7)                            │
-│   GuildConfig · Panel · PanelTicketType · Ticket · TicketEvent               │
-│   Driver-adapter (@prisma/adapter-pg) · ESM client generator                 │
-│   Race safety: pg_advisory_xact_lock + partial unique index                  │
+│                @hearth/database — Drizzle 0.45 + node-postgres               │
+│   Hand-written schema · drizzle-kit generated migrations (0000–0005)         │
+│   Tickets · Verification · ReactionRoles · RolePicker (3 tables each)        │
+│   runMigrations() auto-applies at bot boot · cuid2 IDs                       │
+│   Race safety: pg_advisory_xact_lock + partial unique indexes                │
+│   FK ON DELETE SET NULL + snapshot columns for audit-log retention           │
 └────────────────────────────┬────────────────────────────────────────────────┘
                              ▼
                       PostgreSQL 16 (compose)
@@ -126,7 +134,7 @@ The result is a stack that feels like MEE6 to end users but reads like infrastru
 | **Runtime**       | Node.js 22.22 LTS                                                                        |
 | **Language**      | TypeScript 5.8 (strict)                                                                  |
 | **Discord SDK**   | discord.js 14.26 + Sapphire Framework 5.5                                                |
-| **Database**      | PostgreSQL 16 + Prisma 7 (ESM client, driver adapter)                                    |
+| **Database**      | PostgreSQL 16 + Drizzle ORM 0.45 (hand-written schema, drizzle-kit migrations)           |
 | **Web**           | Next.js 15.5 + React 19 + App Router + Server Actions                                    |
 | **UI**            | Tailwind v4 + shadcn/ui + Auth.js v5 (Discord OAuth)                                     |
 | **Build**         | tsup (bot) · Next.js standalone (dashboard) · tsx (dev watch)                            |
@@ -140,11 +148,14 @@ The result is a stack that feels like MEE6 to end users but reads like infrastru
 ### Architectural Decisions
 
 - **Self-hosted multi-tenancy.** Each community owns its Discord application and runs its own Hearth instance. No cross-community shared state.
-- **Domain logic in `@hearth/tickets-core`.** Both the bot's slash command flow and the dashboard's Server Actions import from this package. The dashboard never holds a Discord bot token — every Discord-side render goes through the bot's internal HTTP API. tickets-core uses `discord-api-types` (types-only) so it ships zero runtime discord.js dependency.
+- **One domain package per feature family.** `@hearth/tickets-core`, `@hearth/verification-core`, `@hearth/reaction-roles-core`, and `@hearth/role-picker-core` are siblings — same form factor (facade + operations + builder + zod schemas + i18n + PGlite tests), each owning one trigger pattern. New domains import the shared `DiscordGateway` composite port; they never re-implement Discord plumbing.
+- **Three triggers, domain by domain.** Button (verification, welcome, moderation) · reaction (reaction-roles, polls) · select-menu (role-picker, future country pickers). The service layer stays trigger-agnostic; the same domain never tries to host two triggers.
+- **Zero discord.js in domain packages or dashboard.** Domain packages use `discord-api-types` (types-only). The dashboard never holds a Discord bot token — every Discord-side render goes through the bot's internal HTTP API (`/internal/*`, bearer-authed with a shared token).
 - **Concurrency belt-and-suspenders.** A double-clicked panel button is blocked at two layers: a Postgres advisory transaction lock keyed by `(guildId, openerId, panelTypeId)`, and a partial unique index on the same tuple constrained to active states. Either alone is sufficient.
-- **Operator-driven configuration.** Panels and ticket types are CRUD'd at runtime via slash commands or the dashboard. Onboarding a new community requires zero code changes.
+- **Operator-driven configuration.** Panels, types, options, and settings are CRUD'd at runtime via slash commands or the dashboard. Onboarding a new community requires zero code changes.
 - **Self-hosted dashboard, not Vercel.** Hearth's white-label thesis is "one `docker compose up` and you're done." A Vercel + Neon split would add two external dependencies per deploy. Instead, the dashboard runs in the same compose stack as the bot, and the operator's existing nginx terminates TLS.
 - **Graceful degradation under bot downtime.** Dashboard mutations always commit the DB write first, then call the bot's render endpoint. If the bot is unreachable, the operator sees "Saved. Discord re-render queued — retry," and a Retry sync button replays the call when the bot is back.
+- **Audit retention survives option deletion.** Every audit event (verification submissions, reaction-roles grants, role-picker selections) snapshots option label/emoji/roleId at write-time. Option FK uses `ON DELETE SET NULL` so operators can prune options without losing history.
 
 ---
 
@@ -181,10 +192,13 @@ hearth/
 │       ├── tests/unit/
 │       └── Dockerfile                    # Next.js standalone output
 ├── packages/
-│   ├── tickets-core/                     # Domain SOT — bot + dashboard share these
+│   ├── tickets-core/                     # Tickets domain + composite DiscordGateway port host
 │   │   └── src/{panel,ticket,guildConfig}Service.ts · ports/ · lib/ · schemas.ts · i18n/
-│   ├── database/                         # Prisma schema + lazy client (Proxy)
-│   ├── shared/                           # Result, AppError, cross-app types
+│   ├── verification-core/                # Verification domain (button trigger, DEFI-658)
+│   ├── reaction-roles-core/              # Reaction-based role-self-assignment (DEFI-661)
+│   ├── role-picker-core/                 # StringSelectMenu-based role picker
+│   ├── database/                         # Drizzle schema + lazy NodePgDatabase Proxy + runMigrations()
+│   ├── shared/                           # Result, AppError, ActionError, cross-app types
 │   ├── tsconfig/                         # base.json, bot.json, web.json
 │   └── eslint-config/                    # Shared ESLint flat config
 ├── infra/
@@ -199,12 +213,14 @@ hearth/
 
 ### Invariants
 
-- The ticket domain lives only in `@hearth/tickets-core`. Both surfaces import from it — never duplicate the schema or the constraint logic.
-- `@hearth/tickets-core` does not import `discord.js`. Only `discord-api-types` (types-only). The discord.js gateway implementation lives in `apps/bot/src/services/ports/discordGateway.djs.ts` and nowhere else.
+- Each feature family lives in exactly one `@hearth/<domain>-core` package. Both bot and dashboard import from it — never duplicate the schema or the constraint logic.
+- Domain packages never import `discord.js`. Only `discord-api-types` (types-only). The discord.js gateway implementation lives in `apps/bot/src/services/ports/discordGateway.djs.ts` and nowhere else.
 - `apps/dashboard/src/` does not import `discord.js`. Discord-side rendering goes through `botClient.callBot('/internal/...')`.
-- The Prisma client is exported from `@hearth/database`. Direct `new PrismaClient()` calls in apps are forbidden.
+- The Drizzle client is exported as `dbDrizzle` from `@hearth/database` (lazy `Proxy` so it's Next.js build-time safe). Caller never imports `drizzle-orm/*` directly — `@hearth/database` re-exports the hot operators (`eq`, `and`, `inArray`, `asc`, `desc`, `count`, `sql`).
+- DB error branching uses helpers (`isUniqueViolation`, `isLockNotAvailable`, `getConstraintName`) from `@hearth/database`, not raw SQLSTATE codes or `error instanceof PgError` patterns.
 - Environment variables are validated once via Zod (`apps/{bot,dashboard}/src/{config,lib}/env.ts`). `process.env` is not read elsewhere.
 - One Sapphire piece per file (Listener / Command / InteractionHandler / Precondition). Multiple exports are silently dropped by the loader.
+- New domain packages (`@hearth/<name>-core`) must update **both** Dockerfiles in the same PR — explicit `pnpm --filter @hearth/<name>-core run build` + `COPY packages/<name>-core/package.json` (clean-VM build hardening, see PR #21).
 
 ---
 
@@ -238,8 +254,9 @@ cp apps/dashboard/.env.example apps/dashboard/.env
 # 1. Start Postgres (bot + dashboard run on host via watch)
 docker compose -f infra/docker-compose.yml up -d postgres
 
-# 2. Apply migrations
-pnpm --filter @hearth/database exec prisma migrate dev
+# 2. Migrations apply automatically on bot boot via runMigrations().
+#    Apply manually for dev without booting the bot:
+pnpm --filter @hearth/database exec drizzle-kit migrate
 
 # 3. Run the bot (one terminal) and the dashboard (another)
 pnpm dev
@@ -248,11 +265,28 @@ pnpm --filter @hearth/dashboard dev
 
 The bot registers its slash commands against `DISCORD_DEV_GUILD_ID` for instant updates. Without it, commands register globally (≈1h propagation). The dashboard listens on `http://localhost:3200`.
 
+To generate a new migration after editing schema files in `packages/database/src/schema/`:
+
+```bash
+pnpm --filter @hearth/database exec drizzle-kit generate
+```
+
+Review the generated SQL before committing — `drizzle-kit` will auto-DROP+CREATE for renames, which is destructive. Non-additive changes are often safer hand-written.
+
 ---
 
 ## Operating Hearth
 
 After Hearth is online and you've added the bot to your server, all configuration happens through Discord slash commands or the web dashboard. **No code changes, no env edits.**
+
+### Features at a glance
+
+| Domain         | Slash root         | Dashboard page           | Trigger          | What it does                                                               |
+| -------------- | ------------------ | ------------------------ | ---------------- | -------------------------------------------------------------------------- |
+| Tickets        | `/panel`, `/setup` | `/g/<id>/ticket-panels`  | Button           | Multi-type ticket panels → private channels with per-type categories       |
+| Verification   | `/verification`    | `/g/<id>/verification`   | Button           | Emoji-button quiz → granted role on correct answer (configurable outcomes) |
+| Reaction Roles | `/reactionroles`   | `/g/<id>/reaction-roles` | Reaction         | Emoji reactions toggle roles (language pickers, opt-in role flags)         |
+| Role Picker    | `/rolepicker`      | `/g/<id>/role-picker`    | StringSelectMenu | Dropdown role selector with optional re-click to clear                     |
 
 ### Slash command flow (Discord-only operators)
 
@@ -408,13 +442,13 @@ pnpm --filter @hearth/bot test:integration
 
 ### Strategy
 
-| Layer                | Approach                                                                                                                     |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `tickets-core/`      | In-memory `FakeDb` + `FakeDiscordGateway`. 100% deterministic. Race conditions provable via `async-mutex`.                   |
-| `bot/`               | Same FakeGateway pattern for ticket flows. Internal-api routes tested with mocked context.                                   |
-| `dashboard/`         | Server Actions tested with mocked db + botClient.                                                                            |
-| Integration          | Real Postgres via `@testcontainers/postgresql`. Migrations applied per-suite. Verifies advisory lock + partial unique index. |
-| Discord interactions | Out of scope for automated tests. Verified manually in dev guilds before each PR.                                            |
+| Layer                                        | Approach                                                                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `tickets-core/` and other `*-core/` packages | PGlite (in-memory Postgres) replays the full migration chain + `FakeDiscordGateway` satisfying the composite port. 100% deterministic. |
+| `bot/`                                       | FakeGateway for service flows. Internal-api routes tested with mocked context. Pure helpers (e.g. `reactionDiff`) tested standalone.   |
+| `dashboard/`                                 | Server Actions tested with mocked db + botClient.                                                                                      |
+| Integration                                  | Real Postgres via `@testcontainers/postgresql`. Migrations applied per-suite. Verifies advisory lock + partial unique index.           |
+| Discord interactions                         | Out of scope for automated tests. Verified manually in dev guilds before each PR.                                                      |
 
 ---
 
@@ -456,7 +490,7 @@ cd /opt/hearth/infra
 #   docker compose logs --tail=20 bot dashboard
 ```
 
-The bot's entrypoint runs `prisma migrate deploy` before starting, so schema drift is impossible. Slash commands auto-register on first connect (idHints persisted afterward to avoid re-registration churn).
+The bot's entrypoint calls `runMigrations(env.DATABASE_URL)` before starting, so schema drift is impossible — boot fails loudly if migrations can't apply. Slash commands auto-register on first connect (idHints persisted afterward to avoid re-registration churn).
 
 ### Subsequent deploys
 

@@ -79,8 +79,9 @@ cd /opt/hearth/infra
 
 The script: pulls latest, sanity-checks the two `.env` files, builds
 both images, brings up postgres + bot + dashboard, prints the last 20
-log lines from each. Bot's entrypoint runs `prisma migrate deploy`
-before starting, so schema drift is impossible.
+log lines from each. Bot's entrypoint calls `runMigrations(env.DATABASE_URL)`
+(Drizzle migrator) before starting, so schema drift is impossible —
+boot fails loudly if migrations can't apply.
 
 ## Subsequent deploys
 
@@ -137,11 +138,12 @@ DASHBOARD_PORT=4000 docker compose -f infra/docker-compose.yml up -d
   Wire this into a cron + GCS upload before user-visible state accumulates.
 - `.env` files should be `chmod 600 root:root` in production. Phase 4+
   consider migrating to GCP Secret Manager.
-- Both bots share one Postgres instance. The bot does the migration and
-  is therefore the schema owner; the dashboard reads/writes through the
-  same client and is migration-free. **Never** run `prisma migrate dev`
-  on production — only `prisma migrate deploy` (which the bot's
-  entrypoint already does on boot).
+- Bot and dashboard share one Postgres instance. The bot owns migrations
+  (its boot-time `runMigrations()` is the only path that touches schema);
+  the dashboard reads/writes through the same Drizzle client and is
+  migration-free. **Never** run `drizzle-kit generate` against production
+  — generate migrations locally, commit them, then deploy. Generated SQL
+  applies forward-only via the migrator.
 
 ## Troubleshooting
 
@@ -156,6 +158,8 @@ the dashboard's env points at the wrong host. Inside compose it must be
 `http://bot:3000` (service name); on the host (dev) it's
 `http://localhost:3100`.
 
-**`prisma migrate deploy` fails** — schema drift. Bot won't boot if
-migrations don't apply cleanly. Restore from a recent dump or roll
-forward by writing a new migration locally and re-deploying.
+**Drizzle migration fails on boot** — schema drift. Bot won't boot if
+migrations don't apply cleanly (logs show the failing statement + halt).
+Restore from a recent dump or roll forward by writing a new migration
+locally (`pnpm --filter @hearth/database exec drizzle-kit generate`) and
+re-deploying.
