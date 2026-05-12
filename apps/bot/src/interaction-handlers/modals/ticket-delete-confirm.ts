@@ -1,7 +1,7 @@
 import { ConflictError, NotFoundError, PermissionError } from '@hearth/shared';
 import { decode, matchesAction } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import { type ModalSubmitInteraction, MessageFlags } from 'discord.js';
+import { DiscordAPIError, type ModalSubmitInteraction, MessageFlags } from 'discord.js';
 
 import { i18n } from '../../i18n/index.js';
 import { readMemberPermissionsBits } from '../../lib/interactionHelpers.js';
@@ -12,9 +12,12 @@ interface DeleteConfirmPayload {
 }
 
 // Modal handler that validates the confirmation text and invokes
-// ticketService.deleteTicket. Replies ephemerally because by the time
-// we reply the channel itself has been deleted — non-ephemeral would
-// have nowhere to land.
+// ticketService.deleteTicket. The trigger lives inside the ticket
+// channel, so on success the channel — and with it the interaction's
+// @original message — is gone by the time we'd acknowledge. Any
+// editReply at that point 404s with code 10008 (Unknown Message).
+// We attempt the edit anyway (channel-delete propagation can race in
+// rare paths) and swallow the expected 10008.
 export class TicketDeleteConfirmHandler extends InteractionHandler {
   public constructor(
     context: InteractionHandler.LoaderContext,
@@ -46,9 +49,6 @@ export class TicketDeleteConfirmHandler extends InteractionHandler {
       return;
     }
 
-    // We deferReply ephemeral because deleteTicket on the current channel
-    // means the interaction's channel no longer exists by the time we reply;
-    // ephemeral replies survive channel deletion.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const result = await this.container.services.ticket.deleteTicket({
@@ -64,9 +64,21 @@ export class TicketDeleteConfirmHandler extends InteractionHandler {
         result.error instanceof NotFoundError
           ? result.error.message
           : i18n.common.errors.generic;
-      await interaction.editReply({ content: message });
+      await this.safeEditReply(interaction, message);
       return;
     }
-    await interaction.editReply({ content: 'Ticket deleted.' });
+    await this.safeEditReply(interaction, 'Ticket deleted.');
+  }
+
+  // editReply that swallows the expected 10008 Unknown Message after
+  // successful channel deletion. Any other Discord error still surfaces
+  // so genuine bugs aren't hidden.
+  private async safeEditReply(interaction: ModalSubmitInteraction, content: string): Promise<void> {
+    try {
+      await interaction.editReply({ content });
+    } catch (err) {
+      if (err instanceof DiscordAPIError && err.code === 10008) return;
+      throw err;
+    }
   }
 }

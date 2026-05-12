@@ -66,6 +66,15 @@ export interface DeleteTicketInput {
   readonly actorPermissionsBits: bigint;
 }
 
+// Success payload for closeTicket. `archiveCategoryConfigured` signals
+// whether the guild has an archive category set — callers use this to
+// nudge operators ("set one in Settings") when the close completed but
+// the channel didn't visibly move.
+export interface CloseTicketSuccess {
+  readonly ticket: Ticket;
+  readonly archiveCategoryConfigured: boolean;
+}
+
 type OpenTicketError = ConflictError | NotFoundError | ValidationError | DiscordApiError;
 type LifecycleError = PermissionError | ConflictError | NotFoundError | DiscordApiError;
 type DeleteError = PermissionError | NotFoundError | DiscordApiError;
@@ -312,7 +321,7 @@ export class TicketService {
 
   // ─────────────────────────────── close ───────────────────────────────
 
-  public async closeTicket(input: ActorInput): Promise<Result<Ticket, LifecycleError>> {
+  public async closeTicket(input: ActorInput): Promise<Result<CloseTicketSuccess, LifecycleError>> {
     const ticket = await this.findTicket(input.ticketId);
     if (ticket === null) {
       return err(new NotFoundError(`Ticket ${input.ticketId} not found`));
@@ -354,9 +363,10 @@ export class TicketService {
 
     const refreshed = await this.findTicketOrThrow(input.ticketId);
     const config = await this.guildConfig.getOrCreate(refreshed.guildId);
-    if (config.archiveCategoryId !== null) {
+    const archiveCategoryId = config.archiveCategoryId;
+    if (archiveCategoryId !== null) {
       try {
-        await this.gateway.moveChannelToCategory(refreshed.channelId, config.archiveCategoryId);
+        await this.gateway.moveChannelToCategory(refreshed.channelId, archiveCategoryId);
       } catch (e) {
         if (e instanceof DiscordApiError) return err(e);
         throw e;
@@ -377,7 +387,7 @@ export class TicketService {
         closer_emojis: '',
       }),
     );
-    return ok(refreshed);
+    return ok({ ticket: refreshed, archiveCategoryConfigured: archiveCategoryId !== null });
   }
 
   // ─────────────────────────────── reopen ───────────────────────────────

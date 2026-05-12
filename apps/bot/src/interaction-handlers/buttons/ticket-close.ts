@@ -1,6 +1,6 @@
 import { decode, matchesAction } from '@hearth/tickets-core';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import type { ButtonInteraction } from 'discord.js';
+import { type ButtonInteraction, MessageFlags } from 'discord.js';
 
 import { readMemberRoleIds, replyAppError } from '../../lib/interactionHelpers.js';
 
@@ -39,5 +39,16 @@ export class TicketCloseHandler extends InteractionHandler {
       return;
     }
     await interaction.deferUpdate();
+    // When the guild has no archive category set, close completes
+    // correctly but the channel doesn't visibly move — easy for the
+    // closer to mistake for "nothing happened." Nudge them ephemerally
+    // so they (or an admin) can fix the config in Settings.
+    if (!result.value.archiveCategoryConfigured) {
+      await interaction.followUp({
+        content:
+          'Ticket closed. Tip: set an **Archive category** in dashboard Settings to auto-move closed tickets out of the active list.',
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   }
 }

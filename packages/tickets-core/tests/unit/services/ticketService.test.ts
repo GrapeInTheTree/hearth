@@ -278,7 +278,10 @@ describe('TicketService.closeTicket', () => {
       actorRoleIds: [],
     });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.status).toBe(TicketStatus.closed);
+    if (result.ok) {
+      expect(result.value.ticket.status).toBe(TicketStatus.closed);
+      expect(result.value.archiveCategoryConfigured).toBe(false);
+    }
   });
 
   it('random user cannot close', async () => {
@@ -320,7 +323,7 @@ describe('TicketService.closeTicket', () => {
     if (!opened.ok) throw new Error('seed');
     harness.gateway.reset();
 
-    await harness.service.closeTicket({
+    const closed = await harness.service.closeTicket({
       ticketId: opened.value.id,
       actorId: 'u-opener',
       actorRoleIds: [],
@@ -329,6 +332,8 @@ describe('TicketService.closeTicket', () => {
     const moves = harness.gateway.callsOf('moveChannelToCategory');
     expect(moves).toHaveLength(1);
     expect((moves[0]?.args as { categoryId: string }).categoryId).toBe('777777777777777777');
+    expect(closed.ok).toBe(true);
+    if (closed.ok) expect(closed.value.archiveCategoryConfigured).toBe(true);
   });
 
   it('denies opener SendMessages on close', async () => {
