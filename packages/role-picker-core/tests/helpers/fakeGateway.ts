@@ -10,10 +10,11 @@ import type {
   VerificationMessagePayload,
 } from '@hearth/tickets-core';
 
-// In-memory DiscordGateway double for self-roles-core. Records every call so
-// assertions can verify side-effect order, and honours an optional `throwOn`
-// set + flags for the role-op failure paths so 'noop' branches are exercised
-// without standing up real Discord errors at the test site.
+// In-memory DiscordGateway double for role-picker-core. Records every
+// call so assertions can verify side-effect order. Honours optional
+// flags for the role-op failure paths so the failure-variant audit
+// branches are exercised without standing up real Discord errors at
+// the test site.
 
 type WelcomeMessagePayloadShape = Record<string, unknown>;
 
@@ -26,13 +27,12 @@ export interface FakeGatewayOptions {
   readonly nextChannelId?: () => string;
   readonly nextMessageId?: () => string;
   readonly throwOn?: ReadonlySet<string>;
-  /** Member→role membership snapshot. Key: `<guildId>:<userId>:<roleId>`. */
   readonly memberRoles?: ReadonlySet<string>;
-  /** When true, assignRoleToMember rejects with a DiscordApiError simulating
-   *  a 50013 (Missing Permissions) so the service maps to 'noop'. */
+  /** When true, assignRoleToMember rejects with a DiscordApiError so
+   *  the service maps the selection grant to 'role_assign_failed'. */
   readonly failAssignAsDiscordError?: boolean;
-  /** When true, removeRoleFromMember rejects with a DiscordApiError so the
-   *  service maps the reaction-remove path to 'noop'. */
+  /** When true, removeRoleFromMember rejects with a DiscordApiError so
+   *  the service maps the selection revoke to 'role_revoke_failed'. */
   readonly failRemoveAsDiscordError?: boolean;
 }
 
@@ -43,6 +43,8 @@ export class FakeDiscordGateway implements DiscordGateway {
   private readonly grantedRoles = new Set<string>();
 
   public constructor(private readonly options: FakeGatewayOptions = {}) {}
+
+  // ─── Tickets (unused here, stubbed for composite) ─────────────────
 
   public async createTicketChannel(
     input: CreateTicketChannelInput,
@@ -132,11 +134,43 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve();
   }
 
+  // ─── Base ─────────────────────────────────────────────────────────
+
   public resolveMemberDisplay(guildId: string, userId: string): Promise<string> {
     this.record('resolveMemberDisplay', { guildId, userId });
     this.maybeThrow('resolveMemberDisplay');
     return Promise.resolve(`Display(${userId})`);
   }
+
+  public assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void> {
+    this.record('assignRoleToMember', { guildId, userId, roleId });
+    this.maybeThrow('assignRoleToMember');
+    if (this.options.failAssignAsDiscordError === true) {
+      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
+    }
+    this.grantedRoles.add(membershipKey(guildId, userId, roleId));
+    return Promise.resolve();
+  }
+
+  public memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean> {
+    this.record('memberHasRole', { guildId, userId, roleId });
+    this.maybeThrow('memberHasRole');
+    const key = membershipKey(guildId, userId, roleId);
+    const seeded = this.options.memberRoles?.has(key) === true;
+    return Promise.resolve(seeded || this.grantedRoles.has(key));
+  }
+
+  public removeRoleFromMember(guildId: string, userId: string, roleId: string): Promise<void> {
+    this.record('removeRoleFromMember', { guildId, userId, roleId });
+    this.maybeThrow('removeRoleFromMember');
+    if (this.options.failRemoveAsDiscordError === true) {
+      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
+    }
+    this.grantedRoles.delete(membershipKey(guildId, userId, roleId));
+    return Promise.resolve();
+  }
+
+  // ─── Verification (unused here, stubbed) ──────────────────────────
 
   public async sendVerificationMessage(
     channelId: string,
@@ -164,23 +198,7 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve();
   }
 
-  public assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void> {
-    this.record('assignRoleToMember', { guildId, userId, roleId });
-    this.maybeThrow('assignRoleToMember');
-    if (this.options.failAssignAsDiscordError === true) {
-      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
-    }
-    this.grantedRoles.add(membershipKey(guildId, userId, roleId));
-    return Promise.resolve();
-  }
-
-  public memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean> {
-    this.record('memberHasRole', { guildId, userId, roleId });
-    this.maybeThrow('memberHasRole');
-    const key = membershipKey(guildId, userId, roleId);
-    const seeded = this.options.memberRoles?.has(key) === true;
-    return Promise.resolve(seeded || this.grantedRoles.has(key));
-  }
+  // ─── Self-roles (unused here, stubbed) ────────────────────────────
 
   public async sendSelfRolesMessage(
     channelId: string,
@@ -218,10 +236,8 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve();
   }
 
-  // Role-picker methods — stubbed here so the composite DiscordGateway
-  // type is satisfied. Self-roles tests don't exercise these; the
-  // role-picker-core package ships its own FakeGateway that records the
-  // role-picker side of the seam.
+  // ─── Role-picker (the domain under test) ──────────────────────────
+
   public async sendRolePickerMessage(
     channelId: string,
     payload: RolePickerMessagePayload,
@@ -245,16 +261,6 @@ export class FakeDiscordGateway implements DiscordGateway {
   public deleteRolePickerMessage(channelId: string, messageId: string): Promise<void> {
     this.record('deleteRolePickerMessage', { channelId, messageId });
     this.maybeThrow('deleteRolePickerMessage');
-    return Promise.resolve();
-  }
-
-  public removeRoleFromMember(guildId: string, userId: string, roleId: string): Promise<void> {
-    this.record('removeRoleFromMember', { guildId, userId, roleId });
-    this.maybeThrow('removeRoleFromMember');
-    if (this.options.failRemoveAsDiscordError === true) {
-      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
-    }
-    this.grantedRoles.delete(membershipKey(guildId, userId, roleId));
     return Promise.resolve();
   }
 

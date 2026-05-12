@@ -17,7 +17,8 @@ export type CustomIdAction =
   | 'ticket:reopen'
   | 'ticket:delete'
   | 'ticket:delete-confirm'
-  | 'verification:submit';
+  | 'verification:submit'
+  | 'role-picker:submit';
 
 const PanelOpenPayload = z
   .object({ panelId: z.string().min(1), typeId: z.string().min(1) })
@@ -26,6 +27,10 @@ const TicketActionPayload = z.object({ ticketId: z.string().min(1) }).strict();
 const VerificationSubmitPayload = z
   .object({ panelId: z.string().min(1), optionId: z.string().min(1) })
   .strict();
+// Role-picker submissions only carry the panel id; the selected option
+// ids come from `interaction.values[]` at runtime. Encoding them in the
+// customId would blow the 100-char budget on panels with >2 options.
+const RolePickerSubmitPayload = z.object({ panelId: z.string().min(1) }).strict();
 
 // Registry maps action → its payload schema. Decoders use this to validate
 // the incoming JSON; encoders rely on TypeScript's structural matching.
@@ -37,6 +42,7 @@ const PayloadSchemas = {
   'ticket:delete': TicketActionPayload,
   'ticket:delete-confirm': TicketActionPayload,
   'verification:submit': VerificationSubmitPayload,
+  'role-picker:submit': RolePickerSubmitPayload,
 } as const satisfies Record<CustomIdAction, z.ZodType>;
 
 export type CustomIdPayloadFor<A extends CustomIdAction> = z.infer<(typeof PayloadSchemas)[A]>;

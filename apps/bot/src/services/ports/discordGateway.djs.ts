@@ -4,6 +4,7 @@ import type {
   DiscordGateway,
   ModlogEmbed,
   PanelMessagePayload,
+  RolePickerMessagePayload,
   SelfRolesMessagePayload,
   SendWelcomeMessageInput,
   VerificationMessagePayload,
@@ -362,6 +363,54 @@ export class DjsDiscordGateway implements DiscordGateway {
       const guild = await this.client.guilds.fetch(guildId);
       const member = await guild.members.fetch(userId);
       await member.roles.remove(roleId);
+    });
+  }
+
+  // ─── Role-picker (StringSelectMenu) ───────────────────────────────────
+  //
+  // The component row carrying the StringSelectMenu is built upstream in
+  // the role-picker-core builder using `discord-api-types` JSON shapes;
+  // discord.js accepts those shapes directly on `send`/`edit` calls, so
+  // the gateway just passes them through. Mirrors the self-roles message
+  // ops byte-for-byte minus the reaction-sync step (the component IS the
+  // UI for role-picker).
+
+  public async sendRolePickerMessage(
+    channelId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<{ messageId: string }> {
+    return await this.wrap('sendRolePickerMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      const message = await channel.send({
+        ...(payload.content !== undefined ? { content: payload.content } : {}),
+        embeds: payload.embeds as APIEmbed[],
+        components: payload.components as never,
+      });
+      return { messageId: message.id };
+    });
+  }
+
+  public async editRolePickerMessage(
+    channelId: string,
+    messageId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<void> {
+    await this.wrap('editRolePickerMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      const message = await channel.messages.fetch(messageId);
+      await message.edit({
+        ...(payload.content !== undefined ? { content: payload.content } : {}),
+        embeds: payload.embeds as APIEmbed[],
+        components: payload.components as never,
+      });
+    });
+  }
+
+  public async deleteRolePickerMessage(channelId: string, messageId: string): Promise<void> {
+    await this.wrap('deleteRolePickerMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      // Swallow 404 / 10008 — operator may have removed it manually.
+      await channel.messages.delete(messageId).catch(() => undefined);
     });
   }
 

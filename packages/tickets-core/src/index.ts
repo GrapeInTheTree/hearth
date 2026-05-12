@@ -24,6 +24,8 @@ export type {
   DiscordGateway,
   ModlogEmbed,
   PanelMessagePayload,
+  RolePickerGateway,
+  RolePickerMessagePayload,
   SelfRolesGateway,
   SelfRolesMessagePayload,
   SendWelcomeMessageInput,

@@ -4,8 +4,9 @@ import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 
 // The DiscordGateway is the only seam through which services touch
 // Discord. It is composed from one shared sub-interface (BaseGateway,
-// for role + member ops every domain needs) and three domain
-// sub-interfaces — TicketsGateway, VerificationGateway, SelfRolesGateway.
+// for role + member ops every domain needs) and four domain
+// sub-interfaces — TicketsGateway, VerificationGateway, SelfRolesGateway,
+// RolePickerGateway.
 //
 // Services depend on the **narrowest** sub-interface they need so the
 // domain cores import only the ops they actually use:
@@ -13,12 +14,13 @@ import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 //   class TicketService          { constructor(...gw: TicketsGateway) }
 //   class VerificationService    { constructor(...gw: VerificationGateway) }
 //   class SelfRolesService       { constructor(...gw: SelfRolesGateway) }
+//   class RolePickerService      { constructor(...gw: RolePickerGateway) }
 //
 // Production wiring (apps/bot) implements the full composite
-// DiscordGateway = TicketsGateway & VerificationGateway & SelfRolesGateway
-// — one DjsDiscordGateway instance feeds every service. Tests follow the
-// same pattern: a single FakeDiscordGateway satisfies all three so tests
-// can assert across domain boundaries when needed.
+// DiscordGateway = T & V & S & R — one DjsDiscordGateway instance feeds
+// every service. Tests follow the same pattern: a single FakeDiscordGateway
+// satisfies all four so tests can assert across domain boundaries when
+// needed.
 //
 // Hard rule (unchanged): services NEVER import 'discord.js' directly.
 // Anything richer than `string` / `number` / `bigint` / `readonly
@@ -48,6 +50,18 @@ export interface VerificationMessagePayload {
 // uniform with the other domains keeps gateway implementations symmetrical
 // even though `components` is always empty in practice.
 export interface SelfRolesMessagePayload {
+  readonly content: string | undefined;
+  readonly embeds: readonly APIEmbed[];
+  readonly components: readonly unknown[];
+}
+
+// Role-picker messages are an embed plus a single ActionRow containing
+// one StringSelectMenu. The component row is part of the message
+// payload — unlike self-roles, there's no separate "sync reactions"
+// step. The bot's djs gateway encodes the menu using
+// `StringSelectMenuBuilder` from discord.js; this shape stays JSON to
+// keep the seam runtime-free.
+export interface RolePickerMessagePayload {
   readonly content: string | undefined;
   readonly embeds: readonly APIEmbed[];
   readonly components: readonly unknown[];
@@ -207,9 +221,36 @@ export interface SelfRolesGateway extends BaseGateway {
   ): Promise<void>;
 }
 
+// ─── RolePickerGateway ──────────────────────────────────────────────
+
+export interface RolePickerGateway extends BaseGateway {
+  /** Send a role-picker message (embed + ActionRow with one
+   *  StringSelectMenu) to a public channel. The dropdown is part of the
+   *  payload — there is no separate component-sync step. */
+  sendRolePickerMessage(
+    channelId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<{ messageId: string }>;
+
+  /** Edit an existing role-picker message. The payload always includes
+   *  the StringSelectMenu — editing options replaces the menu in place
+   *  and Discord preserves any in-flight user state on the client. */
+  editRolePickerMessage(
+    channelId: string,
+    messageId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<void>;
+
+  /** Hard-delete a role-picker message. Best-effort. */
+  deleteRolePickerMessage(channelId: string, messageId: string): Promise<void>;
+}
+
 // ─── DiscordGateway ─────────────────────────────────────────────────
 // Composite for the production djs implementation and for test fakes
 // that span multiple domains. Service-layer code prefers the narrower
 // sub-interfaces above.
 
-export type DiscordGateway = TicketsGateway & VerificationGateway & SelfRolesGateway;
+export type DiscordGateway = TicketsGateway &
+  VerificationGateway &
+  SelfRolesGateway &
+  RolePickerGateway;
