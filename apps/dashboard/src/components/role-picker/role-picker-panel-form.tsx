@@ -42,9 +42,12 @@ const FormSchema = RolePickerPanelInputSchema.extend({
   embedTitle: z.string().min(1, 'Title is required').max(256),
   embedDescription: z.string().min(1, 'Description is required').max(4000),
   placeholder: z.string().min(1, 'Placeholder is required').max(150),
-  // Boolean façade over minValues. When ON: minValues=0, Discord renders
-  // a native "Clear selection" link in the dropdown. When OFF: minValues=1,
-  // strict pick-required. v1 keeps maxValues locked to 1 (single-select).
+  // Boolean façade over minValues. When ON: minValues=0 — Discord lets the
+  // user re-click their selected option to deselect (fires values=[],
+  // service revokes the role). When OFF: minValues=1, strict pick-required
+  // (re-click is a no-op upstream). v1 locks maxValues=1 (single-select);
+  // when v2 multi-select unlocks, max_values>1 also surfaces Discord's
+  // separate "Clear selection" link.
   allowClear: z.boolean(),
 });
 type FormValues = z.infer<typeof FormSchema>;
@@ -254,8 +257,9 @@ export function RolePickerPanelForm({
             <span className="flex flex-col gap-0.5">
               <span className="font-medium">Allow users to clear their selection</span>
               <span className="text-xs text-[color:var(--color-fg-muted)]">
-                Discord shows a native &ldquo;Clear selection&rdquo; link at the bottom of the
-                dropdown. Users can drop their role without an admin.
+                Users can re-click their currently-selected option to drop the role — same toggle
+                pattern as reaction-role bots. Off = re-clicking the selected option does nothing
+                (admin removal required).
               </span>
             </span>
           </label>

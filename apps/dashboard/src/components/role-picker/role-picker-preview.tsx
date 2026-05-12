@@ -1,14 +1,17 @@
 'use client';
 
-import { ChevronDown, Eye, X } from 'lucide-react';
+import { ChevronDown, Eye } from 'lucide-react';
 
 interface RolePickerPreviewProps {
   readonly title: string;
   readonly description: string;
   readonly placeholder: string;
   readonly footerText?: string | undefined;
-  /** Discord StringSelectMenu `min_values`. When 0, the dropdown renders
-   *  a native "Clear selection" affordance below the option list. */
+  /** Discord StringSelectMenu `min_values`. When 0, Discord lets the user
+   *  re-click their currently-selected option to deselect it (which fires
+   *  `interaction.values=[]` → service revokes the role). single-select
+   *  dropdowns don't render a separate "Clear selection" link — the
+   *  re-click affordance is the only clear path. */
   readonly minValues?: number;
   readonly options?: readonly {
     readonly id?: string;
@@ -119,16 +122,12 @@ export function RolePickerPreview({
             No options yet — add options to populate the dropdown.
           </p>
         )}
-        {showClearAffordance && ordered.length > 0 ? (
-          <div
-            className="flex items-center gap-1.5 border-t px-3 py-2 text-xs text-[color:var(--color-fg-muted)]"
-            aria-label="Discord renders a native Clear selection link here"
-          >
-            <X className="h-3 w-3" aria-hidden="true" />
-            <span>Clear selection</span>
-          </div>
-        ) : null}
       </div>
+      {showClearAffordance && ordered.length > 0 ? (
+        <p className="px-1 text-xs text-[color:var(--color-fg-muted)]">
+          Users can re-click their selected option in Discord to drop the role.
+        </p>
+      ) : null}
     </div>
   );
 }

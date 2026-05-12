@@ -523,6 +523,23 @@ Polish round 직후 code-design audit에서 식별된 5개 부채를 5개 PR로 
 - DEFI-661 풀스택 (5 stacked) + Polish round (3 follow-up) + Quality round (5 backlog fix) + Dashboard modal sweep (1) + Role-picker domain (5 PR) = **총 19 PR**
 - 운영 시작 OK — VM 재배포 후 PM 검증 가능 상태. 모든 진단된 부채 해소
 
+### Role-picker clear-selection (2026-05-12, PR #59 + #60)
+
+PM이 라이브 테스트 중 "사용자가 어떻게 role을 취소하지?" 물어봐서 **`min_values=1 → 0`** default 전환 + dashboard 토글로 운영자가 panel별 결정. PR #59에서 schema default + 체크박스 + preview footer + clear-selection unit test (~150 LOC, 1 unit test 추가, 369 green).
+
+**라이브 검증 후 발견 + PR #60 카피 정정:**
+
+Discord 클라이언트의 StringSelectMenu 동작이 `min_values`에 따라 다름 — `min=0`에선 사용자가 **이미 선택된 옵션을 재클릭하면 클라이언트가 `values=[]`로 interaction을 발사** (re-click = deselect). 별도 "Clear selection" 링크는 **multi-select 드롭다운에서만** 표시되고 single-select에선 안 나옴.
+
+즉:
+
+- **체크박스 ON (min=0)**: 선택된 행 재클릭 → role revoke (MEE6 reaction-roles와 같은 토글 멘탈 모델). 별도 Clear 링크 X.
+- **체크박스 OFF (min=1)**: 재클릭 → 클라이언트가 interaction 자체를 안 발사 → no-op. 운영자가 수동 제거.
+
+PR #60에서 preview의 가짜 "✕ Clear selection" footer 제거 + 체크박스 helper 카피를 실제 동작에 맞게 정정 ("Users can re-click their currently-selected option to drop the role"). 서비스 로직은 변경 없음 — `handleSelection({values:[]})`가 이미 모든 currently-held role을 revoke하도록 작성돼 있어서 클라이언트 동작이 그대로 작동.
+
+**ADR 추가 (D11):** `min_values=0`에서 Discord 클라이언트는 single-select 드롭다운에 별도 Clear 링크를 그리지 않고, 선택된 옵션 재클릭을 deselect로 해석. 우리 UX 카피는 이 동작을 정확히 반영해야 함 (가짜 어포던스 표시 금지).
+
 **이전 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
 
 - ✅ **DEFI-658 Verification Module** — Discord 인증 봇 + 어드민 페이지. 5 PR 누적 ~3,500 LOC. Linear 티켓 [DEFI-658](https://linear.app/chiliz-defi/issue/DEFI-658), due 2026-05-14, 5 points. button 패턴 채택 (CLAUDE.md §4 Phase 3 결정 준수). 다음 reaction-roles / welcome 모듈도 같은 form factor.
