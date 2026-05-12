@@ -12,7 +12,7 @@ export const rolePicker = {
     defaultPlaceholder: 'Pick a role…',
   },
 
-  optionLine: '{emoji} **{label}** — <@&{roleId}>',
+  optionLine: '{emoji} **{label}**',
 
   ephemeral: {
     grantedOnly: 'Added: {labels}.',

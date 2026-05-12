@@ -64,22 +64,16 @@ export function ReactionRolesPreview({
               )}
             </p>
             {ordered.length > 0 ? (
+              // Mirror the Discord embed body: emoji + bold label, no role
+              // pill. The role-pill rendered above made the message noisy
+              // and PM asked to drop it (2026-05-12 follow-up). Operators
+              // can still see the option↔role binding on the panel
+              // detail page; users figure it out from the label.
               <div className="flex flex-col gap-1 pt-2 text-sm">
                 {ordered.map((o, i) => (
                   <div key={o.id ?? i} className="flex items-baseline gap-2">
                     <span aria-hidden="true">{o.emoji}</span>
                     <span className="font-semibold">{o.label}</span>
-                    <span className="text-[color:var(--color-fg-muted)]">—</span>
-                    <span
-                      className="rounded-[var(--radius-sm)] bg-[color:var(--color-bg)] px-1.5 py-0.5 text-xs font-medium"
-                      style={
-                        o.roleColor !== undefined && o.roleColor !== 0
-                          ? { color: `#${o.roleColor.toString(16).padStart(6, '0')}` }
-                          : undefined
-                      }
-                    >
-                      @{o.roleName ?? `role:${o.roleId.slice(-4)}`}
-                    </span>
                   </div>
                 ))}
               </div>
