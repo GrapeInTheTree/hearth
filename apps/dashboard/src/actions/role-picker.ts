@@ -14,7 +14,7 @@ import { callBot } from '@/lib/botClient';
 import { authorizeGuild } from '@/lib/server-auth';
 
 // Server Actions for role-picker panel CRUD. Pipeline mirrors the
-// self-roles + verification actions exactly:
+// reaction-roles + verification actions exactly:
 //   1) authorize via Manage Guild on the target guild
 //   2) validate input via the shared zod schema
 //   3) write to DB (single source of truth — same DB the bot uses)

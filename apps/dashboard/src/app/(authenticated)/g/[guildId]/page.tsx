@@ -7,7 +7,7 @@ import {
   eq,
   inArray,
   schema,
-  SelfRolesAction,
+  ReactionRolesAction,
   TicketStatus,
   VerificationOutcome,
 } from '@hearth/database';
@@ -41,7 +41,7 @@ const ACTIVITY_LIMIT = 8;
 
 interface ActivityRow {
   readonly id: string;
-  readonly kind: 'ticket' | 'verification' | 'self-roles';
+  readonly kind: 'ticket' | 'verification' | 'reaction-roles';
   /** Display label, formatted with i18n template. */
   readonly label: string;
   /** Pre-resolved ticket number / outcome for the icon. */
@@ -99,14 +99,14 @@ function formatVerificationEvent(outcome: string): { label: string; icon: Activi
   }
 }
 
-function formatSelfRolesEvent(action: string): { label: string; icon: ActivityRow['icon'] } {
+function formatReactionRolesEvent(action: string): { label: string; icon: ActivityRow['icon'] } {
   switch (action) {
-    case SelfRolesAction.granted:
-      return { label: t.overview.activity.selfRolesGranted, icon: 'granted' };
-    case SelfRolesAction.revoked:
-      return { label: t.overview.activity.selfRolesRevoked, icon: 'revoked' };
-    case SelfRolesAction.noop:
-      return { label: t.overview.activity.selfRolesNoop, icon: 'failed' };
+    case ReactionRolesAction.granted:
+      return { label: t.overview.activity.reactionRolesGranted, icon: 'granted' };
+    case ReactionRolesAction.revoked:
+      return { label: t.overview.activity.reactionRolesRevoked, icon: 'revoked' };
+    case ReactionRolesAction.noop:
+      return { label: t.overview.activity.reactionRolesNoop, icon: 'failed' };
     default:
       return { label: action, icon: 'failed' };
   }
@@ -129,11 +129,11 @@ export default async function GuildOverviewPage({
     closedTicketsRows,
     verificationPanelsRows,
     verifiedUsersRows,
-    selfRolesPanelsRows,
-    selfRolesActiveHoldersRows,
+    reactionRolesPanelsRows,
+    reactionRolesActiveHoldersRows,
     recentTicketEvents,
     recentVerificationEvents,
-    recentSelfRolesEvents,
+    recentReactionRolesEvents,
   ] = await Promise.all([
     dbDrizzle
       .select({ value: count() })
@@ -176,10 +176,10 @@ export default async function GuildOverviewPage({
       ),
     dbDrizzle
       .select({ value: count() })
-      .from(schema.selfRolesPanel)
-      .where(eq(schema.selfRolesPanel.guildId, guildId)),
+      .from(schema.reactionRolesPanel)
+      .where(eq(schema.reactionRolesPanel.guildId, guildId)),
     // Active holders = distinct users with at least one net-positive
-    // role binding across any option of this guild's self-roles
+    // role binding across any option of this guild's reaction-roles
     // panels. We can't compute "net granted - revoked" in pure SQL
     // without a window function, so we go for an upper-bound proxy:
     // distinct(userId) WHERE action='granted'. Re-grants don't inflate
@@ -187,13 +187,16 @@ export default async function GuildOverviewPage({
     // Good enough for an overview card; the panel detail page has the
     // exact audit-log walk.
     dbDrizzle
-      .select({ value: countDistinct(schema.selfRolesEvent.userId) })
-      .from(schema.selfRolesEvent)
-      .innerJoin(schema.selfRolesPanel, eq(schema.selfRolesPanel.id, schema.selfRolesEvent.panelId))
+      .select({ value: countDistinct(schema.reactionRolesEvent.userId) })
+      .from(schema.reactionRolesEvent)
+      .innerJoin(
+        schema.reactionRolesPanel,
+        eq(schema.reactionRolesPanel.id, schema.reactionRolesEvent.panelId),
+      )
       .where(
         and(
-          eq(schema.selfRolesPanel.guildId, guildId),
-          eq(schema.selfRolesEvent.action, SelfRolesAction.granted),
+          eq(schema.reactionRolesPanel.guildId, guildId),
+          eq(schema.reactionRolesEvent.action, ReactionRolesAction.granted),
         ),
       ),
     dbDrizzle
@@ -224,14 +227,17 @@ export default async function GuildOverviewPage({
       .limit(ACTIVITY_LIMIT),
     dbDrizzle
       .select({
-        id: schema.selfRolesEvent.id,
-        action: schema.selfRolesEvent.action,
-        createdAt: schema.selfRolesEvent.createdAt,
+        id: schema.reactionRolesEvent.id,
+        action: schema.reactionRolesEvent.action,
+        createdAt: schema.reactionRolesEvent.createdAt,
       })
-      .from(schema.selfRolesEvent)
-      .innerJoin(schema.selfRolesPanel, eq(schema.selfRolesPanel.id, schema.selfRolesEvent.panelId))
-      .where(eq(schema.selfRolesPanel.guildId, guildId))
-      .orderBy(desc(schema.selfRolesEvent.createdAt))
+      .from(schema.reactionRolesEvent)
+      .innerJoin(
+        schema.reactionRolesPanel,
+        eq(schema.reactionRolesPanel.id, schema.reactionRolesEvent.panelId),
+      )
+      .where(eq(schema.reactionRolesPanel.guildId, guildId))
+      .orderBy(desc(schema.reactionRolesEvent.createdAt))
       .limit(ACTIVITY_LIMIT),
   ]);
 
@@ -240,8 +246,8 @@ export default async function GuildOverviewPage({
   const closedTickets = closedTicketsRows[0]?.value ?? 0;
   const verificationPanels = verificationPanelsRows[0]?.value ?? 0;
   const verifiedUsers = verifiedUsersRows[0]?.value ?? 0;
-  const selfRolesPanelsCount = selfRolesPanelsRows[0]?.value ?? 0;
-  const selfRolesActiveHolders = selfRolesActiveHoldersRows[0]?.value ?? 0;
+  const reactionRolesPanelsCount = reactionRolesPanelsRows[0]?.value ?? 0;
+  const reactionRolesActiveHolders = reactionRolesActiveHoldersRows[0]?.value ?? 0;
 
   // Merge + sort the three activity streams by createdAt, take the most
   // recent ACTIVITY_LIMIT. Smaller streams just contribute fewer rows.
@@ -254,15 +260,15 @@ export default async function GuildOverviewPage({
       const { label, icon } = formatVerificationEvent(e.outcome);
       return { id: e.id, kind: 'verification' as const, label, icon, createdAt: e.createdAt };
     }),
-    ...recentSelfRolesEvents.map((e) => {
-      const { label, icon } = formatSelfRolesEvent(e.action);
-      return { id: e.id, kind: 'self-roles' as const, label, icon, createdAt: e.createdAt };
+    ...recentReactionRolesEvents.map((e) => {
+      const { label, icon } = formatReactionRolesEvent(e.action);
+      return { id: e.id, kind: 'reaction-roles' as const, label, icon, createdAt: e.createdAt };
     }),
   ]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, ACTIVITY_LIMIT);
 
-  const isEmpty = ticketPanels === 0 && verificationPanels === 0 && selfRolesPanelsCount === 0;
+  const isEmpty = ticketPanels === 0 && verificationPanels === 0 && reactionRolesPanelsCount === 0;
 
   const avatarUrl =
     session.user.avatarHash !== null
@@ -321,16 +327,16 @@ export default async function GuildOverviewPage({
             muted
           />
           <StatCard
-            href={`/g/${guildId}/self-roles`}
+            href={`/g/${guildId}/reaction-roles`}
             icon={Languages}
-            label={t.overview.counts.selfRolesPanels}
-            value={selfRolesPanelsCount}
+            label={t.overview.counts.reactionRolesPanels}
+            value={reactionRolesPanelsCount}
           />
           <StatCard
-            href={`/g/${guildId}/self-roles`}
+            href={`/g/${guildId}/reaction-roles`}
             icon={CheckCircle2}
-            label={t.overview.counts.selfRolesActiveHolders}
-            value={selfRolesActiveHolders}
+            label={t.overview.counts.reactionRolesActiveHolders}
+            value={reactionRolesActiveHolders}
             muted
           />
         </div>

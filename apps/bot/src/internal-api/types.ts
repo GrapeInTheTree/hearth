@@ -1,6 +1,6 @@
 import type { DbDrizzle } from '@hearth/database';
+import type { ReactionRolesService } from '@hearth/reaction-roles-core';
 import type { RolePickerService } from '@hearth/role-picker-core';
-import type { SelfRolesService } from '@hearth/self-roles-core';
 import type { PanelService } from '@hearth/tickets-core';
 import type { VerificationService } from '@hearth/verification-core';
 import type { Client } from 'discord.js';
@@ -18,7 +18,7 @@ export interface InternalApiContext {
   readonly db: DbDrizzle;
   readonly panel: PanelService;
   readonly verification: VerificationService;
-  readonly selfRoles: SelfRolesService;
+  readonly reactionRoles: ReactionRolesService;
   readonly rolePicker: RolePickerService;
   readonly branding: Branding;
   /** Returns true when the bot's gateway connection is OPEN (used by /healthz). */

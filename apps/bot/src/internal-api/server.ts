@@ -5,6 +5,12 @@ import { sendError } from './json.js';
 import { handleGuildResources, handleGuildsList } from './routes/guilds.js';
 import { handleHealthz } from './routes/healthz.js';
 import { handlePanelDelete, handlePanelRender, handlePanelRepost } from './routes/panels.js';
+import {
+  handleReactionRolesDelete,
+  handleReactionRolesRender,
+  handleReactionRolesRepost,
+  handleReactionRolesRevokeHolders,
+} from './routes/reaction-roles.js';
 import { handleResolve } from './routes/resolve.js';
 import {
   handleRolePickerDelete,
@@ -12,12 +18,6 @@ import {
   handleRolePickerRepost,
   handleRolePickerRevokeHolders,
 } from './routes/role-picker.js';
-import {
-  handleSelfRolesDelete,
-  handleSelfRolesRender,
-  handleSelfRolesRepost,
-  handleSelfRolesRevokeHolders,
-} from './routes/self-roles.js';
 import {
   handleVerificationDelete,
   handleVerificationRender,
@@ -131,42 +131,42 @@ function matchRoute(
     };
   }
 
-  // ── self-roles (DEFI-661) ──
-  const selfRolesRenderMatch = /^\/internal\/self-roles\/([^/]+)\/render$/.exec(pathname);
-  if (method === 'POST' && selfRolesRenderMatch !== null) {
-    const [, panelId] = selfRolesRenderMatch;
+  // ── reaction-roles (DEFI-661) ──
+  const reactionRolesRenderMatch = /^\/internal\/reaction-roles\/([^/]+)\/render$/.exec(pathname);
+  if (method === 'POST' && reactionRolesRenderMatch !== null) {
+    const [, panelId] = reactionRolesRenderMatch;
     if (panelId === undefined) return null;
     return {
       requireAuth: true,
-      handle: async () => handleSelfRolesRender(ctx, panelId, res),
+      handle: async () => handleReactionRolesRender(ctx, panelId, res),
     };
   }
-  const selfRolesRepostMatch = /^\/internal\/self-roles\/([^/]+)\/repost$/.exec(pathname);
-  if (method === 'POST' && selfRolesRepostMatch !== null) {
-    const [, panelId] = selfRolesRepostMatch;
+  const reactionRolesRepostMatch = /^\/internal\/reaction-roles\/([^/]+)\/repost$/.exec(pathname);
+  if (method === 'POST' && reactionRolesRepostMatch !== null) {
+    const [, panelId] = reactionRolesRepostMatch;
     if (panelId === undefined) return null;
     return {
       requireAuth: true,
-      handle: async () => handleSelfRolesRepost(ctx, panelId, res),
+      handle: async () => handleReactionRolesRepost(ctx, panelId, res),
     };
   }
-  const selfRolesDeleteMatch = /^\/internal\/self-roles\/([^/]+)$/.exec(pathname);
-  if (method === 'DELETE' && selfRolesDeleteMatch !== null) {
-    const [, panelId] = selfRolesDeleteMatch;
+  const reactionRolesDeleteMatch = /^\/internal\/reaction-roles\/([^/]+)$/.exec(pathname);
+  if (method === 'DELETE' && reactionRolesDeleteMatch !== null) {
+    const [, panelId] = reactionRolesDeleteMatch;
     if (panelId === undefined) return null;
     return {
       requireAuth: true,
-      handle: async () => handleSelfRolesDelete(ctx, panelId, res),
+      handle: async () => handleReactionRolesDelete(ctx, panelId, res),
     };
   }
-  const selfRolesRevokeHoldersMatch =
-    /^\/internal\/self-roles\/([^/]+)\/options\/([^/]+)\/revoke-holders$/.exec(pathname);
-  if (method === 'POST' && selfRolesRevokeHoldersMatch !== null) {
-    const [, panelId, optionId] = selfRolesRevokeHoldersMatch;
+  const reactionRolesRevokeHoldersMatch =
+    /^\/internal\/reaction-roles\/([^/]+)\/options\/([^/]+)\/revoke-holders$/.exec(pathname);
+  if (method === 'POST' && reactionRolesRevokeHoldersMatch !== null) {
+    const [, panelId, optionId] = reactionRolesRevokeHoldersMatch;
     if (panelId === undefined || optionId === undefined) return null;
     return {
       requireAuth: true,
-      handle: async () => handleSelfRolesRevokeHolders(ctx, panelId, optionId, res),
+      handle: async () => handleReactionRolesRevokeHolders(ctx, panelId, optionId, res),
     };
   }
 

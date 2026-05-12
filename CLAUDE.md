@@ -160,12 +160,12 @@ hearth/
 │   │   │   ├── schemas.ts         # VerificationPanelInputSchema, VerificationOptionInputSchema
 │   │   │   └── i18n/              # verification 도메인 카피 (success/wrong/already/role_assign_failed 등)
 │   │   └── tests/unit/            # 41 unit tests (PGlite + FakeDiscordGateway from tickets-core port)
-│   ├── self-roles-core/           # 봇 + 대시보드 공용 — self-roles 도메인 (DEFI-661, reaction-based)
+│   ├── reaction-roles-core/           # 봇 + 대시보드 공용 — reaction-roles 도메인 (DEFI-661, reaction-based)
 │   │   ├── src/
-│   │   │   ├── selfRolesService.ts      # CRUD + handleReactionAdd/Remove (granted/revoked/noop)
-│   │   │   ├── lib/selfRolesBuilder.ts  # buildSelfRolesPayload (embed body w/ option lines + reaction seed list)
-│   │   │   ├── schemas.ts         # SelfRolesPanelInputSchema, SelfRolesOptionInputSchema (per-option roleId)
-│   │   │   └── i18n/              # self-roles 도메인 카피
+│   │   │   ├── reactionRolesService.ts      # CRUD + handleReactionAdd/Remove (granted/revoked/noop)
+│   │   │   ├── lib/reactionRolesBuilder.ts  # buildReactionRolesPayload (embed body w/ option lines + reaction seed list)
+│   │   │   ├── schemas.ts         # ReactionRolesPanelInputSchema, ReactionRolesOptionInputSchema (per-option roleId)
+│   │   │   └── i18n/              # reaction-roles 도메인 카피
 │   │   └── tests/unit/            # 37 unit tests (PGlite + FakeDiscordGateway from tickets-core port)
 │   ├── shared/                    # 양 앱 공용 타입/zod/상수 (Result, AppError 계층)
 │   ├── tsconfig/                  # base.json, bot.json, web.json
@@ -188,9 +188,9 @@ hearth/
 
 - 티켓 도메인 로직은 `packages/tickets-core/`에만. 봇 / 대시보드 모두 여기서 import — 단일 진실의 원천.
 - Verification 도메인 로직은 `packages/verification-core/`에만 (DEFI-658). 자체 port를 만들지 않고 `tickets-core`의 `DiscordGateway` port를 재사용한다 — port는 봇 ↔ 도메인 seam이고 봇은 한 개. 단방향 의존 (verification-core → tickets-core).
-- Self-roles 도메인 로직은 `packages/self-roles-core/`에만 (DEFI-661). verification-core와 같은 규칙 — tickets-core port 재사용 (필요 시 메서드 추가). Reaction listener는 customId가 없으니 identity는 `(messageId, emoji)`; `SelfRolesOption(panelId, emoji)` unique index가 lookup hot path.
+- Reaction Roles 도메인 로직은 `packages/reaction-roles-core/`에만 (DEFI-661). verification-core와 같은 규칙 — tickets-core port 재사용 (필요 시 메서드 추가). Reaction listener는 customId가 없으니 identity는 `(messageId, emoji)`; `ReactionRolesOption(panelId, emoji)` unique index가 lookup hot path.
 - 신규 도메인 패키지(`@hearth/<domain>-core`) 추가 시 같은 form factor: services + builder + schemas + i18n + tests, **discord.js 런타임 의존 0**, tickets-core의 DiscordGateway port 재사용 (필요 시 메서드 추가). 자체 customId action이 필요하면 `tickets-core/src/lib/customId.ts` 레지스트리에 등록. 추가 후 **두 Dockerfile 모두** 신규 패키지를 explicit build chain에 추가 — `pnpm --filter @hearth/<pkg> run build` (PR #21 학습).
-- `packages/tickets-core/`, `packages/verification-core/`, `packages/self-roles-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
+- `packages/tickets-core/`, `packages/verification-core/`, `packages/reaction-roles-core/`는 **discord.js 런타임 의존 0**. `discord-api-types` (types-only)만 사용. 대시보드가 import해도 bundle 부담 없음.
 - **Client component (`'use client'`)는 `@hearth/tickets-core` 배럴 대신 `@hearth/tickets-core/schemas` subpath만 import.** 배럴은 services를 통해 `@hearth/database` → `pg` → `node:dns/net/tls`까지 끌고 와서 webpack이 client bundle에 못 넣음. schema 모듈만 별도 entry로 노출됨. 서버측 (Server Actions / RSC) 코드는 배럴 그대로 OK.
 - **Server Action `err(...)` 인자는 plain `ActionError { code, message }` 만.** AppError 클래스 인스턴스는 React Flight 직렬화에서 `$Z` placeholder + redacted 메시지로 전락 — 클라이언트가 우리 카피 못 봄. 봇 내부 로직은 AppError 그대로 (타입 이점). dashboard action 경계에서만 변환 (`@hearth/shared`의 `ActionError` / `toActionError`).
 - **Layout/middleware의 `redirect()`는 certain failure에서만.** Discord 같은 외부 호출 일시 실패에 redirect를 걸면 Next.js 15의 client router cache가 그 redirect-payload를 캐시해서 reload 전엔 안 풀림 → 무한 루프. transient 실패는 fail-open + last-known-good fallback (`fetchUserGuilds`의 stale cache 패턴 참조).
@@ -242,13 +242,13 @@ hearth/
 
 - **Trigger pattern is domain-by-domain (3 triggers ratified, 2026-05-12):**
   - **Button** — ephemeral feedback / single-answer clicks / modal chaining (verification, welcome, moderation).
-  - **Reaction** — silent multi-select toggle / visual discoverability (self-roles flag panels, polls).
+  - **Reaction** — silent multi-select toggle / visual discoverability (reaction-roles flag panels, polls).
   - **Select menu (StringSelectMenu)** — single OR multi-select dropdown / mobile-friendly / 25+ options / "list of choices" UX (role-picker, country pickers, future moderator assign).
   - Service layer stays trigger-agnostic — same domain doesn't try to host two triggers (branch cost > integration benefit). New domain = new package + best-fit trigger.
-- Exclusivity (self-roles): none / single / multi (min~max).
+- Exclusivity (reaction-roles): none / single / multi (min~max).
 - Welcome: channel + DM with variable substitution (`{user}`, `{server}`, `{membercount}`) + autorole.
 - ✅ **Verification panel** — one panel with up to 5 emoji buttons, one correct answer grants one role. Button pattern. Audit log records the outcome (`success` / `wrong_answer` / `already_verified` / `role_assign_failed`). Full dashboard CRUD plus 9 slash subcommands.
-- ✅ **Self-roles / Language selector (DEFI-661)** — Reaction pattern. Flag-emoji multi-select; removing a reaction revokes the role. Each option carries its own role (per-option `roleId`). Lives in `@hearth/self-roles-core` mirroring the verification-core layout. Audit log records `'granted' | 'revoked' | 'noop'`. Full dashboard CRUD plus 8 slash subcommands. Bot pre-seeds the reaction strip after every render/repost. `GuildMessageReactions` intent + `Partials.Message/Reaction` are required (non-privileged).
+- ✅ **Reaction Roles / Language selector (DEFI-661)** — Reaction pattern. Flag-emoji multi-select; removing a reaction revokes the role. Each option carries its own role (per-option `roleId`). Lives in `@hearth/reaction-roles-core` mirroring the verification-core layout. Audit log records `'granted' | 'revoked' | 'noop'`. Full dashboard CRUD plus 8 slash subcommands. Bot pre-seeds the reaction strip after every render/repost. `GuildMessageReactions` intent + `Partials.Message/Reaction` are required (non-privileged).
 - ✅ **Role picker (StringSelectMenu)** — Select-menu pattern. v1 single-select dropdown — user opens, picks one option, gets the bound role; re-selecting a different option revokes the previous and grants the new (diff-based `handleSelection`). Lives in `@hearth/role-picker-core`. Audit log records four actions (`granted` / `revoked` / `role_assign_failed` / `role_revoke_failed`) — two failure variants because the diff knows direction. customId carries only `panelId`; selected option ids ride in `interaction.values[]` (Discord's 100-char customId budget can't hold an option-id array). Schema reserves `selectionMode`/`minValues`/`maxValues` columns for v2 multi-select unlock without a migration. Full dashboard CRUD plus 8 slash subcommands.
 
 ### Phase 4 — Leveling + Logging (D+22~30)
@@ -276,7 +276,7 @@ Custom commands, reminders, giveaways, polls (native API), feeds (YouTube/Twitch
 - ❌ Discord.js 객체를 service 메서드 1차 인자로 — primitive (id, content) 만 받기
 - ❌ Components V2 message flag (32768) 사용 — v1에선 레거시 embeds만
 - ❌ 음악 기능 추가 — 범위 밖
-- ❌ Discord에 role assign 시도 시 `gateway.assignRoleToMember()` 결과 처리 누락 — `DiscordApiError` 50013(Manage Roles 누락) / 50001(role hierarchy 위반) 등을 잡아 graceful outcome으로 매핑해야 함. verification-core의 `handleSubmission`이 표준 패턴 (`role_assign_failed` outcome + audit log). self-roles-core는 `'noop'` action으로 매핑 (reaction은 ephemeral 못 띄움).
+- ❌ Discord에 role assign 시도 시 `gateway.assignRoleToMember()` 결과 처리 누락 — `DiscordApiError` 50013(Manage Roles 누락) / 50001(role hierarchy 위반) 등을 잡아 graceful outcome으로 매핑해야 함. verification-core의 `handleSubmission`이 표준 패턴 (`role_assign_failed` outcome + audit log). reaction-roles-core는 `'noop'` action으로 매핑 (reaction은 ephemeral 못 띄움).
 - ❌ Reaction listener가 봇 자기 reaction에 반응 — `addMessageReactions`로 봇이 미리 추가한 reaction이 listener에 다시 도착해서 무한 루프 위험. 항상 `if (user.bot) return` 또는 `user.id !== client.user.id` 필터 + `message.author.id === client.user.id` 필터로 봇이 게시한 메시지에만 반응 (DEFI-661 패턴).
 - ❌ Reaction listener가 `reaction.emoji.identifier`를 도메인 식별자로 사용 — discord.js의 `identifier`는 **REST API path용 URL-encoded form** (Unicode 🇰🇷 → `%F0%9F%87%B0%F0%9F%87%B7`). 우리 DB는 raw codepoint 또는 `<:name:id>`를 저장하므로 lookup이 silent miss. 항상 `emoji.id`가 있으면 `<:${name}:${id}>`, 없으면 `emoji.name`으로 재조립해서 service에 전달 (DEFI-661 PR #32 라이브 발견).
 - ❌ `git commit --no-verify`, `--amend` 후 push — 항상 새 커밋
@@ -435,36 +435,36 @@ infra/
 
 ## 8. 진행 상황
 
-**현재 상태 (2026-05-11 — DEFI-661 self-roles 모듈 ✅ 완료):**
+**현재 상태 (2026-05-11 — DEFI-661 reaction-roles 모듈 ✅ 완료):**
 
-- ✅ **DEFI-661 Self-Roles Module** — Reaction-based language selector. 5 PR (1차 스택) + 2 follow-up PR (라이브 발견 fix + Discord 한도 반영) 누적 ~3,750 LOC. Linear 티켓 [DEFI-661](https://linear.app/chiliz-defi/issue/DEFI-661), due 2026-05-13, 5 points — 2일 빠르게 ship. reaction 패턴 채택 — domain-by-domain trigger ADR ratified (§4 Phase 3). verification-core form factor 80% mechanical port.
+- ✅ **DEFI-661 Reaction Roles Module** — Reaction-based language selector. 5 PR (1차 스택) + 2 follow-up PR (라이브 발견 fix + Discord 한도 반영) 누적 ~3,750 LOC. Linear 티켓 [DEFI-661](https://linear.app/chiliz-defi/issue/DEFI-661), due 2026-05-13, 5 points — 2일 빠르게 ship. reaction 패턴 채택 — domain-by-domain trigger ADR ratified (§4 Phase 3). verification-core form factor 80% mechanical port.
 
-| #    | PR  | 제목                                                                      | 1줄                                                                                                                                                                     |
-| ---- | --- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PR-1 | #23 | `feat(db): self-roles schema + drizzle migration`                         | 3 schema (SelfRolesPanel/Option/Event) + `0002_self_roles.sql`. Cycle-free, messageId hot-path index                                                                    |
-| PR-2 | #28 | `feat(core): self-roles-core package + gateway reaction extension`        | `@hearth/self-roles-core` 신규 + DiscordGateway 5 메서드 추가. 37 unit (PGlite + FakeGw)                                                                                |
-| PR-3 | #29 | `feat(self-roles): bot reaction listeners + slash + internal api`         | 2 listeners + DjsGateway 5 구현 + 8 slash + 3 routes + intent/Partials + 1 integration                                                                                  |
-| PR-4 | #30 | `feat(self-roles): dashboard CRUD + emoji-role binding form`              | 6 RSC + 2 actions + 7 components + sidebar nav + 16 unit tests                                                                                                          |
-| PR-5 | #31 | `chore(self-roles): CLAUDE.md ADR + 3-place doc sync`                     | §4 Phase 3 ADR ratified + 3-place sync                                                                                                                                  |
-| fix  | #32 | `fix(self-roles): match DB emoji shape, not discord.js's REST identifier` | 라이브 검증 중 발견. `reaction.emoji.identifier`가 URL-encoded (`%F0%9F%87%B0%F0%9F%87%B7`)라 DB lookup miss. listener에서 `emoji.id`/`emoji.name`으로 raw shape 재조립 |
-| feat | #33 | `feat(self-roles): raise option cap to Discord's hard limit of 20`        | 자체 UX 마진 10 → Discord 하드 한도 20. 8 파일 (schemas + service + slash position 0-19 + dashboard form/copy + overflow test)                                          |
+| #    | PR  | 제목                                                                          | 1줄                                                                                                                                                                     |
+| ---- | --- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR-1 | #23 | `feat(db): reaction-roles schema + drizzle migration`                         | 3 schema (ReactionRolesPanel/Option/Event) + `0002_reaction_roles.sql`. Cycle-free, messageId hot-path index                                                            |
+| PR-2 | #28 | `feat(core): reaction-roles-core package + gateway reaction extension`        | `@hearth/reaction-roles-core` 신규 + DiscordGateway 5 메서드 추가. 37 unit (PGlite + FakeGw)                                                                            |
+| PR-3 | #29 | `feat(reaction-roles): bot reaction listeners + slash + internal api`         | 2 listeners + DjsGateway 5 구현 + 8 slash + 3 routes + intent/Partials + 1 integration                                                                                  |
+| PR-4 | #30 | `feat(reaction-roles): dashboard CRUD + emoji-role binding form`              | 6 RSC + 2 actions + 7 components + sidebar nav + 16 unit tests                                                                                                          |
+| PR-5 | #31 | `chore(reaction-roles): CLAUDE.md ADR + 3-place doc sync`                     | §4 Phase 3 ADR ratified + 3-place sync                                                                                                                                  |
+| fix  | #32 | `fix(reaction-roles): match DB emoji shape, not discord.js's REST identifier` | 라이브 검증 중 발견. `reaction.emoji.identifier`가 URL-encoded (`%F0%9F%87%B0%F0%9F%87%B7`)라 DB lookup miss. listener에서 `emoji.id`/`emoji.name`으로 raw shape 재조립 |
+| feat | #33 | `feat(reaction-roles): raise option cap to Discord's hard limit of 20`        | 자체 UX 마진 10 → Discord 하드 한도 20. 8 파일 (schemas + service + slash position 0-19 + dashboard form/copy + overflow test)                                          |
 
 > 📝 **PR-2~5는 GitHub stacked PR 재타게팅 때문에 번호 #24-27 → #28-31로 reroll**. 머지 시퀀스: #23 → #28 → #29 → #30 → #31 → #32 → #33. main commit graph 그대로.
 
-- ✅ **테스트 누계 (DEFI-661 후)**: tickets-core 101 + verification-core 41 + self-roles-core 37 + bot 31 + dashboard 96 + integration 7 = **313 green**
+- ✅ **테스트 누계 (DEFI-661 후)**: tickets-core 101 + verification-core 41 + reaction-roles-core 37 + bot 31 + dashboard 96 + integration 7 = **313 green**
 - ✅ **Trigger pattern ADR ratified**: button (ephemeral feedback / single-answer / modal chaining) vs reaction (multi-select toggle / silent application) — domain-by-domain. Service layer trigger-agnostic.
 - ✅ **라이브 검증** (로컬 docker compose, 2026-05-11): `Debound#2349` 봇이 `Fannie Test`에 게시한 panel에서 사용자 `297566244612210689`가 🇰🇷 클릭 → `granted` audit row + role 부여 → unclick → `revoked` + role 회수. 풀 라이프사이클 OK. 라이브 발견 함정 1건은 PR #32로 영구 fix.
-- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 DEFI-661 풀스택 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 self-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
+- 🚧 **VM 재배포** (대기) — `community-bot.namusunmul.com`은 DEFI-661 풀스택 머지 후 재배포 필요. SSH 후 `git pull && ./infra/deploy.sh`. 첫 부팅 시 `runMigrations()`가 reaction-roles 3 테이블 자동 생성, GuildMessageReactions intent는 non-privileged이라 Developer Portal 추가 작업 X.
 
 ### Polish round (2026-05-11, 4 follow-up PR)
 
 라이브 검증 + 코드 리뷰로 발견한 결함들 영구 fix. 5 PR 추가 누적.
 
-| PR  | 제목                                                                                   | 한 줄                                                                                                                                                                                         |
-| --- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #35 | `fix(self-roles): edit-in-place preserves user reactions, repost becomes escape hatch` | 옵션 추가 시 repost 강제 → user reaction 손실 UX bug. renderPanel edit 분기에서 `addMessageReactions` 호출 + 옵션 액션들 자동 sync. repost는 "freshen the panel" 용도로만                     |
-| #36 | `feat(self-roles): syncBotReactions + option holders cleanup + success logs`           | `addMessageReactions` → `syncBotReactions` (add missing + remove orphans). 옵션 삭제 시 audit-log 기반 role cleanup. 리스너 INFO 로그 (granted/revoked/noop)                                  |
-| #37 | `feat(self-roles): Dialog primitives + overview KPI + audit-log cleanup modal`         | shadcn Dialog primitive (`@radix-ui/react-dialog`). Repost + Remove option `window.confirm` → 모달 (holder count + cleanup 체크박스). Overview에 self-roles 2 KPI + activity feed integration |
+| PR  | 제목                                                                                       | 한 줄                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #35 | `fix(reaction-roles): edit-in-place preserves user reactions, repost becomes escape hatch` | 옵션 추가 시 repost 강제 → user reaction 손실 UX bug. renderPanel edit 분기에서 `addMessageReactions` 호출 + 옵션 액션들 자동 sync. repost는 "freshen the panel" 용도로만                         |
+| #36 | `feat(reaction-roles): syncBotReactions + option holders cleanup + success logs`           | `addMessageReactions` → `syncBotReactions` (add missing + remove orphans). 옵션 삭제 시 audit-log 기반 role cleanup. 리스너 INFO 로그 (granted/revoked/noop)                                      |
+| #37 | `feat(reaction-roles): Dialog primitives + overview KPI + audit-log cleanup modal`         | shadcn Dialog primitive (`@radix-ui/react-dialog`). Repost + Remove option `window.confirm` → 모달 (holder count + cleanup 체크박스). Overview에 reaction-roles 2 KPI + activity feed integration |
 
 **Polish round 학습 (4건, 모두 CLAUDE.md §5 절대 금지 룰에 추가됨):**
 
@@ -473,7 +473,7 @@ infra/
 - 봇 자기 reaction 무한 루프 방지 — `user.bot` 필터 + `message.author.id === client.user.id` 필터 둘 다 (DEFI-661 D8)
 - `syncBotReactions`는 add + remove orphans 한 번에 — 옵션 삭제 시 봇이 미리 추가한 reaction이 orphan으로 남는 것 방지 (PR #36)
 
-**테스트 누계 (Polish round 후):** tickets-core 101 + verification-core 41 + self-roles-core 39 + bot 31 + dashboard 97 + integration 7 = **316 green**.
+**테스트 누계 (Polish round 후):** tickets-core 101 + verification-core 41 + reaction-roles-core 39 + bot 31 + dashboard 97 + integration 7 = **316 green**.
 
 ### Quality round (2026-05-11) — backlog 5건 모두 ✅ fix
 
@@ -483,19 +483,19 @@ Polish round 직후 code-design audit에서 식별된 5개 부채를 5개 PR로 
 | --- | --- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | #1  | #39 | `test: pure reactionDiff function + 15 unit tests`                     | `syncBotReactions` 내부 cache walk + diff 로직을 `apps/bot/src/services/ports/reactionDiff.ts`의 pure function (`computeReactionDiff`, `reactionKey`)으로 추출. discord.js mock 없이 단위 테스트. 부가 perf 이득: missing emoji만 `.react()` 호출 (이전엔 desired 전부). 15 tests, 3ms |
 | #2  | #40 | `perf: SQL net-count aggregation for getOptionHolders`                 | JS Map → Drizzle `GROUP BY ... HAVING SUM(CASE WHEN ...)` 한 번에. Postgres index-backed, 50k+ event option도 메모리 압박 없음. 6 unit tests                                                                                                                                           |
-| #3  | #41 | `feat: audit retention across option delete (FK SET NULL + snapshots)` | `SelfRolesEvent.optionId` → `ON DELETE SET NULL`. `optionLabel/optionEmoji/optionRoleId` snapshot 컬럼 (write-time 채움). 옵션 삭제 후에도 audit row 보존. Panel cascade는 유지 (panel = retention boundary). Migration 0003                                                           |
-| #4  | #42 | `refactor: split DiscordGateway into Base + 3 domain sub-interfaces`   | `DiscordGateway`(25 methods) → `BaseGateway` + `TicketsGateway` + `VerificationGateway` + `SelfRolesGateway`. 서비스는 narrowest sub-interface만 의존. Composite `DiscordGateway = T & V & S`는 djs impl + fake gateway용으로 유지                                                     |
-| #5  | #43 | `refactor: split SelfRolesService into 3 operation classes`            | 660-line 단일 클래스 → `src/operations/{panel,option,reaction}Operations.ts` 분할 + 170-line facade. 외부 API 무변경 — `services.selfRoles.X` 모든 caller 그대로 작동                                                                                                                  |
+| #3  | #41 | `feat: audit retention across option delete (FK SET NULL + snapshots)` | `ReactionRolesEvent.optionId` → `ON DELETE SET NULL`. `optionLabel/optionEmoji/optionRoleId` snapshot 컬럼 (write-time 채움). 옵션 삭제 후에도 audit row 보존. Panel cascade는 유지 (panel = retention boundary). Migration 0003                                                       |
+| #4  | #42 | `refactor: split DiscordGateway into Base + 3 domain sub-interfaces`   | `DiscordGateway`(25 methods) → `BaseGateway` + `TicketsGateway` + `VerificationGateway` + `ReactionRolesGateway`. 서비스는 narrowest sub-interface만 의존. Composite `DiscordGateway = T & V & S`는 djs impl + fake gateway용으로 유지                                                 |
+| #5  | #43 | `refactor: split ReactionRolesService into 3 operation classes`        | 660-line 단일 클래스 → `src/operations/{panel,option,reaction}Operations.ts` 분할 + 170-line facade. 외부 API 무변경 — `services.reactionRoles.X` 모든 caller 그대로 작동                                                                                                              |
 
-**테스트 누계 (Quality round 후):** tickets-core 101 + verification-core 41 + self-roles-core 48 + bot 46 + dashboard 97 + integration 7 = **340 green** (Polish round 후 316 → 340, +24).
+**테스트 누계 (Quality round 후):** tickets-core 101 + verification-core 41 + reaction-roles-core 48 + bot 46 + dashboard 97 + integration 7 = **340 green** (Polish round 후 316 → 340, +24).
 
 ### Dashboard modal sweep (2026-05-11, PR #45)
 
-남은 7개 `window.confirm` 호출을 self-roles Polish round의 Dialog primitive 패턴으로 일괄 교체. tickets repost/delete/remove-type + verification repost/delete/remove-option + self-roles delete 모두 같은 form factor: header → bullet 컨텍스트(유지/사라짐) → 파괴적 작업이면 `AlertTriangle` "This cannot be undone" callout → footer Cancel/Confirm. 코드베이스 전체에 `window.confirm` 0건. 단일 commit `48dc8e2`, 7 components, +530/-121 LOC. typecheck/lint/test(97)/build 그린.
+남은 7개 `window.confirm` 호출을 reaction-roles Polish round의 Dialog primitive 패턴으로 일괄 교체. tickets repost/delete/remove-type + verification repost/delete/remove-option + reaction-roles delete 모두 같은 form factor: header → bullet 컨텍스트(유지/사라짐) → 파괴적 작업이면 `AlertTriangle` "This cannot be undone" callout → footer Cancel/Confirm. 코드베이스 전체에 `window.confirm` 0건. 단일 commit `48dc8e2`, 7 components, +530/-121 LOC. typecheck/lint/test(97)/build 그린.
 
 ### Role-picker module (StringSelectMenu, 2026-05-12, PR #48-#52)
 
-세 번째 trigger 도메인. PM이 DEFI-661 라이브 검증 후 "단일 선택 모드 가능할까?" 물어본 게 시작 — 답으로 self-roles에 single-mode 보태는 것보다 Discord 네이티브 **StringSelectMenu** 도메인 패키지를 통째로 신설. 모바일 UX 훨씬 깔끔 + 25 옵션 (vs reaction 20) + 단일/다중 native 지원.
+세 번째 trigger 도메인. PM이 DEFI-661 라이브 검증 후 "단일 선택 모드 가능할까?" 물어본 게 시작 — 답으로 reaction-roles에 single-mode 보태는 것보다 Discord 네이티브 **StringSelectMenu** 도메인 패키지를 통째로 신설. 모바일 UX 훨씬 깔끔 + 25 옵션 (vs reaction 20) + 단일/다중 native 지원.
 
 5 PR sequential merge, ~3,400 LOC, 35 신규 unit tests (340 → 375 green):
 
@@ -509,11 +509,11 @@ Polish round 직후 code-design audit에서 식별된 5개 부채를 5개 PR로 
 
 **핵심 결정 (ADR — 변경 시 decision memo update):**
 
-- **D1. 새 패키지** (self-roles에 single-mode 안 보탬). trigger surface 다르고 (component vs reaction, atomic values[] vs per-event emoji) 모든 helper에 branch 비용 발생. self-roles facade 165-line이 4번째 ops 파일 흡수하면 PR #43에서 분리한 concerns 다시 합쳐짐.
+- **D1. 새 패키지** (reaction-roles에 single-mode 안 보탬). trigger surface 다르고 (component vs reaction, atomic values[] vs per-event emoji) 모든 helper에 branch 비용 발생. reaction-roles facade 165-line이 4번째 ops 파일 흡수하면 PR #43에서 분리한 concerns 다시 합쳐짐.
 - **D3. Diff-based `handleSelection`** — replace-all 거부. No-op re-select 시 role write 0건. audit narrative 보존 (실제 변경만 row 생성). v2 multi-select forward-compat.
 - **D5. customId panelId only** — selected ids는 `interaction.values[]`로 받음. Discord 100-char customId 한도.
-- **D8. Audit retention** — FK `SET NULL` on optionId + snapshot 컬럼. Q3 self-roles 패턴 그대로.
-- **D9. 25-option cap** — Discord StringSelectMenu hard limit. self-roles 20-cap에서 의도적 fork (reaction 한도 vs StringSelectMenu 한도, 다른 platform constraint).
+- **D8. Audit retention** — FK `SET NULL` on optionId + snapshot 컬럼. Q3 reaction-roles 패턴 그대로.
+- **D9. 25-option cap** — Discord StringSelectMenu hard limit. reaction-roles 20-cap에서 의도적 fork (reaction 한도 vs StringSelectMenu 한도, 다른 platform constraint).
 
 **라이브 검증 (PR-3 docker compose smoke):** `/rolepicker create #channel "Pick your role"` → option add ×3 (Korean / English / Japanese) → dropdown 클릭 → 옵션 선택 → ephemeral "Added: Korean." + Discord role granted → 다른 옵션 선택 → ephemeral "Removed: Korean. Added: English." + role swap → audit log에 4 rows (granted Korean, revoked Korean, granted English, ...).
 
@@ -525,7 +525,7 @@ Polish round 직후 code-design audit에서 식별된 5개 부채를 5개 PR로 
 
 **이전 상태 (2026-05-08 — DEFI-658 verification 모듈 ✅ 완료):**
 
-- ✅ **DEFI-658 Verification Module** — Discord 인증 봇 + 어드민 페이지. 5 PR 누적 ~3,500 LOC. Linear 티켓 [DEFI-658](https://linear.app/chiliz-defi/issue/DEFI-658), due 2026-05-14, 5 points. button 패턴 채택 (CLAUDE.md §4 Phase 3 결정 준수). 다음 self-roles / welcome 모듈도 같은 form factor.
+- ✅ **DEFI-658 Verification Module** — Discord 인증 봇 + 어드민 페이지. 5 PR 누적 ~3,500 LOC. Linear 티켓 [DEFI-658](https://linear.app/chiliz-defi/issue/DEFI-658), due 2026-05-14, 5 points. button 패턴 채택 (CLAUDE.md §4 Phase 3 결정 준수). 다음 reaction-roles / welcome 모듈도 같은 form factor.
 
 | #    | PR  | 제목                                                             | LOC         | 1줄                                                                                           |
 | ---- | --- | ---------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |

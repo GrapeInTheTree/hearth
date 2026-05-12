@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
 // Unit tests — service + builder. Same setup as verification-core /
-// self-roles-core: PGlite for real Postgres semantics in-memory, gateway
+// reaction-roles-core: PGlite for real Postgres semantics in-memory, gateway
 // calls stubbed via the FakeDiscordGateway in tests/helpers.
 
 export default defineConfig({

@@ -1,12 +1,12 @@
-import { SelfRolesAction } from '@hearth/database';
+import { ReactionRolesAction } from '@hearth/database';
 import { Events, Listener } from '@sapphire/framework';
 import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 
 /**
- * Routes Discord reaction-add events into the self-roles service.
+ * Routes Discord reaction-add events into the reaction-roles service.
  *
  * Filters at the listener entry to skip the (vast) majority of reactions
- * that have nothing to do with self-roles:
+ * that have nothing to do with reaction-roles:
  *   1. Reactions from the bot itself (the bot pre-adds them on render).
  *   2. Reactions on messages the bot didn't author.
  * Only after both filters pass does the service hit the DB.
@@ -17,7 +17,7 @@ import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 
  * gateway delivers these events at all.
  *
  * Reaction events have no customId, so identity is `(messageId, emoji)` —
- * the unique index on SelfRolesOption(panelId, emoji) makes the lookup
+ * the unique index on ReactionRolesOption(panelId, emoji) makes the lookup
  * an O(log n) query. The emoji key has to match the shape stored in DB:
  * raw Unicode codepoint for built-in emoji, `<:name:id>` for custom ones.
  * discord.js's `reaction.emoji.identifier` is URL-encoded for the REST
@@ -57,7 +57,7 @@ export class MessageReactionAddListener extends Listener<typeof Events.MessageRe
         ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
         : (reaction.emoji.name ?? '');
 
-    const result = await this.container.services.selfRoles.handleReactionAdd({
+    const result = await this.container.services.reactionRoles.handleReactionAdd({
       messageId: reaction.message.id,
       emoji: emojiKey,
       userId: user.id,
@@ -66,7 +66,7 @@ export class MessageReactionAddListener extends Listener<typeof Events.MessageRe
     if (!result.ok) {
       this.container.logger.warn(
         { err: result.error, panel: reaction.message.id, emoji: emojiKey },
-        'self-roles reaction add failed unexpectedly',
+        'reaction-roles reaction add failed unexpectedly',
       );
       return;
     }
@@ -85,9 +85,9 @@ export class MessageReactionAddListener extends Listener<typeof Events.MessageRe
         guildId: reaction.message.guildId,
         roleId: result.value.roleId,
       },
-      result.value.action === SelfRolesAction.granted
-        ? 'self-roles role granted'
-        : 'self-roles add noop (role op rejected or emoji not bound)',
+      result.value.action === ReactionRolesAction.granted
+        ? 'reaction-roles role granted'
+        : 'reaction-roles add noop (role op rejected or emoji not bound)',
     );
   }
 }

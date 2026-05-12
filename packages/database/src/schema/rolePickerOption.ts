@@ -15,7 +15,7 @@ import { rolePickerPanel } from './rolePickerPanel.js';
 //
 // `description` is the optional sub-line Discord renders under the
 // label in the dropdown. `emoji` (also optional) renders left of the
-// label — unicode or `<:name:id>` for custom. Unlike self-roles, emoji
+// label — unicode or `<:name:id>` for custom. Unlike reaction-roles, emoji
 // is NOT the identity — the cuid2 id is — so duplicate emojis on one
 // panel are allowed (e.g. two 🇰🇷 options with different labels).
 //

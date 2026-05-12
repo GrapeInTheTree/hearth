@@ -28,7 +28,7 @@ import { RolePickerSelectionOperations } from './operations/selectionOperations.
 
 // Public facade. Composes three single-responsibility operation
 // classes (panel, option, selection). Mirrors the verification-core /
-// self-roles-core layout — callers (bot container, dashboard server
+// reaction-roles-core layout — callers (bot container, dashboard server
 // actions, internal-api routes) use the flat method names.
 //
 // Why split:

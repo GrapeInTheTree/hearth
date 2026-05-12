@@ -15,7 +15,7 @@ import type { RolePickerActionResult } from './role-picker.js';
 import { callBot } from '@/lib/botClient';
 import { authorizeGuild } from '@/lib/server-auth';
 
-// Server Actions for role-picker option CRUD. Mirror of self-roles
+// Server Actions for role-picker option CRUD. Mirror of reaction-roles
 // options. Each option mutation syncs the live message — the bot edits
 // the StringSelectMenu in place. Discord preserves any in-flight user
 // state on the client side.

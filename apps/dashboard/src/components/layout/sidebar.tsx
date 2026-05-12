@@ -29,7 +29,7 @@ interface NavSection {
   readonly items: readonly NavItem[];
 }
 
-// Sidebar IA — sections + items. Adding a new domain (self-roles, welcome,
+// Sidebar IA — sections + items. Adding a new domain (reaction-roles, welcome,
 // moderation, …) means dropping a NavItem into the right section. The
 // indentation + section header carry the "this is a feature group" signal,
 // so individual labels stay short ("Tickets" rather than "Ticket
@@ -45,7 +45,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { href: '/panels', label: () => t.nav.panels, icon: Tag },
       { href: '/tickets', label: () => t.nav.tickets, icon: Inbox },
       { href: '/verification', label: () => t.nav.verification, icon: ShieldCheck },
-      { href: '/self-roles', label: () => t.nav.selfRoles, icon: Languages },
+      { href: '/reaction-roles', label: () => t.nav.reactionRoles, icon: Languages },
       { href: '/role-picker', label: () => t.nav.rolePicker, icon: ListChecks },
     ],
   },

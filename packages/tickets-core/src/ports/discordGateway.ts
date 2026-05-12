@@ -5,7 +5,7 @@ import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 // The DiscordGateway is the only seam through which services touch
 // Discord. It is composed from one shared sub-interface (BaseGateway,
 // for role + member ops every domain needs) and four domain
-// sub-interfaces — TicketsGateway, VerificationGateway, SelfRolesGateway,
+// sub-interfaces — TicketsGateway, VerificationGateway, ReactionRolesGateway,
 // RolePickerGateway.
 //
 // Services depend on the **narrowest** sub-interface they need so the
@@ -13,7 +13,7 @@ import type { WelcomeMessagePayload } from '../lib/welcomeBuilder.js';
 //
 //   class TicketService          { constructor(...gw: TicketsGateway) }
 //   class VerificationService    { constructor(...gw: VerificationGateway) }
-//   class SelfRolesService       { constructor(...gw: SelfRolesGateway) }
+//   class ReactionRolesService       { constructor(...gw: ReactionRolesGateway) }
 //   class RolePickerService      { constructor(...gw: RolePickerGateway) }
 //
 // Production wiring (apps/bot) implements the full composite
@@ -49,7 +49,7 @@ export interface VerificationMessagePayload {
 // reactions on the message itself, not a component row. Keeping the shape
 // uniform with the other domains keeps gateway implementations symmetrical
 // even though `components` is always empty in practice.
-export interface SelfRolesMessagePayload {
+export interface ReactionRolesMessagePayload {
   readonly content: string | undefined;
   readonly embeds: readonly APIEmbed[];
   readonly components: readonly unknown[];
@@ -57,7 +57,7 @@ export interface SelfRolesMessagePayload {
 
 // Role-picker messages are an embed plus a single ActionRow containing
 // one StringSelectMenu. The component row is part of the message
-// payload — unlike self-roles, there's no separate "sync reactions"
+// payload — unlike reaction-roles, there's no separate "sync reactions"
 // step. The bot's djs gateway encodes the menu using
 // `StringSelectMenuBuilder` from discord.js; this shape stays JSON to
 // keep the seam runtime-free.
@@ -96,7 +96,7 @@ export interface SendWelcomeMessageInput {
 
 // ─── BaseGateway ────────────────────────────────────────────────────
 // Operations every domain potentially needs: role grants, role checks,
-// member display. Verification + self-roles both call assign/remove +
+// member display. Verification + reaction-roles both call assign/remove +
 // memberHasRole; tickets uses resolveMemberDisplay for system lines.
 
 export interface BaseGateway {
@@ -189,28 +189,28 @@ export interface VerificationGateway extends BaseGateway {
   deleteVerificationMessage(channelId: string, messageId: string): Promise<void>;
 }
 
-// ─── SelfRolesGateway ───────────────────────────────────────────────
+// ─── ReactionRolesGateway ───────────────────────────────────────────────
 
-export interface SelfRolesGateway extends BaseGateway {
-  /** Send a self-roles message to a public channel. The bot will follow
+export interface ReactionRolesGateway extends BaseGateway {
+  /** Send a reaction-roles message to a public channel. The bot will follow
    *  up with syncBotReactions to seed each option's emoji. */
-  sendSelfRolesMessage(
+  sendReactionRolesMessage(
     channelId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<{ messageId: string }>;
 
-  /** Edit an existing self-roles message. Reactions are reconciled
+  /** Edit an existing reaction-roles message. Reactions are reconciled
    *  separately via syncBotReactions. */
-  editSelfRolesMessage(
+  editReactionRolesMessage(
     channelId: string,
     messageId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<void>;
 
-  /** Hard-delete a self-roles message. Best-effort. */
-  deleteSelfRolesMessage(channelId: string, messageId: string): Promise<void>;
+  /** Hard-delete a reaction-roles message. Best-effort. */
+  deleteReactionRolesMessage(channelId: string, messageId: string): Promise<void>;
 
-  /** Reconcile the bot's own reactions on a self-roles message with the
+  /** Reconcile the bot's own reactions on a reaction-roles message with the
    *  desired set: add anything missing, strip orphan bot reactions from
    *  removed options. User reactions are never touched. Unknown-emoji
    *  failures are best-effort per emoji. */
@@ -252,5 +252,5 @@ export interface RolePickerGateway extends BaseGateway {
 
 export type DiscordGateway = TicketsGateway &
   VerificationGateway &
-  SelfRolesGateway &
+  ReactionRolesGateway &
   RolePickerGateway;

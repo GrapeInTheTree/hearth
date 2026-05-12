@@ -39,7 +39,7 @@ const client = new SapphireClient({
     // caches.
     GatewayIntentBits.GuildMembers,
     // Non-privileged in 2026 — delivers MESSAGE_REACTION_ADD/REMOVE for the
-    // self-roles (DEFI-661) listeners. Without it the reaction events never
+    // reaction-roles (DEFI-661) listeners. Without it the reaction events never
     // reach the bot at all.
     GatewayIntentBits.GuildMessageReactions,
     // GatewayIntentBits.MessageContent  ← Phase 1.1 transcript export only
@@ -99,7 +99,7 @@ try {
       db: dbDrizzle,
       panel: diContainer.services.panel,
       verification: diContainer.services.verification,
-      selfRoles: diContainer.services.selfRoles,
+      reactionRoles: diContainer.services.reactionRoles,
       rolePicker: diContainer.services.rolePicker,
       branding,
       isReady: () => client.isReady(),

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // Validation schemas shared between forms (dashboard) and slash command
 // option parsers (bot). Centralised so invariants don't drift between
-// input surfaces. Mirrors the verification-core / self-roles-core
+// input surfaces. Mirrors the verification-core / reaction-roles-core
 // schemas layout.
 
 // Discord caps message embeds at 256-char titles and 4000-char
@@ -13,7 +13,7 @@ const EMBED_DESC_MAX = 4000;
 
 // Role-picker options surface inside a StringSelectMenu. Discord caps
 // the menu at 25 options per submission (StringSelectMenu hard limit).
-// We match that ceiling — forking from self-roles' 20-cap, which was
+// We match that ceiling — forking from reaction-roles' 20-cap, which was
 // driven by Discord's *reaction* limit on a single message.
 const MAX_OPTIONS_PER_PANEL = 25;
 
@@ -28,7 +28,7 @@ const DESCRIPTION_MAX = 100;
 // caps it at 150 chars.
 const PLACEHOLDER_MAX = 150;
 
-// Same emoji pattern as self-roles. Unicode or `<a?:name:id>`. The
+// Same emoji pattern as reaction-roles. Unicode or `<a?:name:id>`. The
 // service stores the raw string; the djs gateway parses the
 // `<a?:name:id>` form into `{id, name, animated}` for the
 // StringSelectMenuOption.

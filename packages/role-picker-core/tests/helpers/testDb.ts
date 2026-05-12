@@ -7,7 +7,7 @@ import { type DbDrizzle, schema } from '@hearth/database';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 
 // PGlite-backed in-memory Postgres. Same approach as
-// @hearth/self-roles-core/tests/helpers/testDb — we replay every
+// @hearth/reaction-roles-core/tests/helpers/testDb — we replay every
 // migration in order so the role-picker tables exist alongside the
 // rest of the schema. The relational query API resolves over the full
 // namespace.
@@ -20,6 +20,7 @@ const MIGRATION_PATHS = [
   resolve(__dirname, '../../../database/drizzle/0002_self_roles.sql'),
   resolve(__dirname, '../../../database/drizzle/0003_self_roles_audit_retention.sql'),
   resolve(__dirname, '../../../database/drizzle/0004_role_picker.sql'),
+  resolve(__dirname, '../../../database/drizzle/0005_reaction_roles_rename.sql'),
 ];
 
 let cachedSql: string | undefined;

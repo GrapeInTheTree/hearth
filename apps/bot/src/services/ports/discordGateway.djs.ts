@@ -5,7 +5,7 @@ import type {
   ModlogEmbed,
   PanelMessagePayload,
   RolePickerMessagePayload,
-  SelfRolesMessagePayload,
+  ReactionRolesMessagePayload,
   SendWelcomeMessageInput,
   VerificationMessagePayload,
   WelcomeMessagePayload,
@@ -276,11 +276,11 @@ export class DjsDiscordGateway implements DiscordGateway {
 
   // ─── Self-roles (DEFI-661) ────────────────────────────────────────────
 
-  public async sendSelfRolesMessage(
+  public async sendReactionRolesMessage(
     channelId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<{ messageId: string }> {
-    return await this.wrap('sendSelfRolesMessage', async () => {
+    return await this.wrap('sendReactionRolesMessage', async () => {
       const channel = await this.fetchTextChannel(channelId);
       const message = await channel.send({
         ...(payload.content !== undefined ? { content: payload.content } : {}),
@@ -291,12 +291,12 @@ export class DjsDiscordGateway implements DiscordGateway {
     });
   }
 
-  public async editSelfRolesMessage(
+  public async editReactionRolesMessage(
     channelId: string,
     messageId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<void> {
-    await this.wrap('editSelfRolesMessage', async () => {
+    await this.wrap('editReactionRolesMessage', async () => {
       const channel = await this.fetchTextChannel(channelId);
       const message = await channel.messages.fetch(messageId);
       await message.edit({
@@ -307,8 +307,8 @@ export class DjsDiscordGateway implements DiscordGateway {
     });
   }
 
-  public async deleteSelfRolesMessage(channelId: string, messageId: string): Promise<void> {
-    await this.wrap('deleteSelfRolesMessage', async () => {
+  public async deleteReactionRolesMessage(channelId: string, messageId: string): Promise<void> {
+    await this.wrap('deleteReactionRolesMessage', async () => {
       const channel = await this.fetchTextChannel(channelId);
       // Swallow 404 / 10008 — operator may have removed the message manually.
       await channel.messages.delete(messageId).catch(() => undefined);
@@ -371,7 +371,7 @@ export class DjsDiscordGateway implements DiscordGateway {
   // The component row carrying the StringSelectMenu is built upstream in
   // the role-picker-core builder using `discord-api-types` JSON shapes;
   // discord.js accepts those shapes directly on `send`/`edit` calls, so
-  // the gateway just passes them through. Mirrors the self-roles message
+  // the gateway just passes them through. Mirrors the reaction-roles message
   // ops byte-for-byte minus the reaction-sync step (the component IS the
   // UI for role-picker).
 

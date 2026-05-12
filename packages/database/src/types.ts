@@ -15,9 +15,9 @@ export type TicketEvent = InferSelectModel<typeof schema.ticketEvent>;
 export type VerificationPanel = InferSelectModel<typeof schema.verificationPanel>;
 export type VerificationOption = InferSelectModel<typeof schema.verificationOption>;
 export type VerificationEvent = InferSelectModel<typeof schema.verificationEvent>;
-export type SelfRolesPanel = InferSelectModel<typeof schema.selfRolesPanel>;
-export type SelfRolesOption = InferSelectModel<typeof schema.selfRolesOption>;
-export type SelfRolesEvent = InferSelectModel<typeof schema.selfRolesEvent>;
+export type ReactionRolesPanel = InferSelectModel<typeof schema.reactionRolesPanel>;
+export type ReactionRolesOption = InferSelectModel<typeof schema.reactionRolesOption>;
+export type ReactionRolesEvent = InferSelectModel<typeof schema.reactionRolesEvent>;
 export type RolePickerPanel = InferSelectModel<typeof schema.rolePickerPanel>;
 export type RolePickerOption = InferSelectModel<typeof schema.rolePickerOption>;
 export type RolePickerEvent = InferSelectModel<typeof schema.rolePickerEvent>;
@@ -52,20 +52,20 @@ export const VerificationOutcome = {
 } as const;
 export type VerificationOutcome = (typeof VerificationOutcome)[keyof typeof VerificationOutcome];
 
-// Audit action recorded on every self-roles reaction event. Stored as text
-// in SelfRolesEvent.action so adding a new action (e.g. 'rate_limited')
+// Audit action recorded on every reaction-roles reaction event. Stored as text
+// in ReactionRolesEvent.action so adding a new action (e.g. 'rate_limited')
 // later doesn't require a schema migration.
 //   granted — reaction added, role assigned
 //   revoked — reaction removed, role removed
 //   noop    — Discord rejected the role op (perms / hierarchy / unknown
 //             emoji); no role change. The user keeps whatever state they
 //             had before — we never half-apply.
-export const SelfRolesAction = {
+export const ReactionRolesAction = {
   granted: 'granted',
   revoked: 'revoked',
   noop: 'noop',
 } as const;
-export type SelfRolesAction = (typeof SelfRolesAction)[keyof typeof SelfRolesAction];
+export type ReactionRolesAction = (typeof ReactionRolesAction)[keyof typeof ReactionRolesAction];
 
 // Audit action recorded on every role-picker selection event. Stored as
 // text in RolePickerEvent.action.
@@ -73,7 +73,7 @@ export type SelfRolesAction = (typeof SelfRolesAction)[keyof typeof SelfRolesAct
 //   revoked              — option de-selected, role removed
 //   role_assign_failed   — Discord rejected the grant (perms / hierarchy)
 //   role_revoke_failed   — Discord rejected the revoke
-// Two failure variants (vs self-roles' single 'noop') because the diff
+// Two failure variants (vs reaction-roles' single 'noop') because the diff
 // engine knows the direction it tried — operators reading the log
 // benefit from seeing which side failed.
 export const RolePickerAction = {

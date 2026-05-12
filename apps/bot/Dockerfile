@@ -20,7 +20,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
 COPY packages/tickets-core/package.json ./packages/tickets-core/
 COPY packages/verification-core/package.json ./packages/verification-core/
-COPY packages/self-roles-core/package.json ./packages/self-roles-core/
+COPY packages/reaction-roles-core/package.json ./packages/reaction-roles-core/
 COPY packages/role-picker-core/package.json ./packages/role-picker-core/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
@@ -37,7 +37,7 @@ COPY . .
 
 # Build chain: shared types first, then DB package (Drizzle schema +
 # migrate entry), then tickets-core (services), then verification-core
-# (DEFI-658), self-roles-core (DEFI-661), then the bot bundle.
+# (DEFI-658), reaction-roles-core (DEFI-661), then the bot bundle.
 # `db:generate` is a no-op leftover from the Prisma migration window —
 # keeping the tolerant `;` separator so absent scripts don't fail the
 # chain. Adding a new domain package = update both Dockerfiles (PR #21
@@ -47,7 +47,7 @@ RUN pnpm --filter @hearth/database run db:generate; \
     pnpm --filter @hearth/database run build && \
     pnpm --filter @hearth/tickets-core run build && \
     pnpm --filter @hearth/verification-core run build && \
-    pnpm --filter @hearth/self-roles-core run build && \
+    pnpm --filter @hearth/reaction-roles-core run build && \
     pnpm --filter @hearth/role-picker-core run build && \
     pnpm --filter @hearth/bot run build
 

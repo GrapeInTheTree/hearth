@@ -1,4 +1,4 @@
-import { selfRoles as enSelfRoles } from '@hearth/self-roles-core';
+import { reactionRoles as enReactionRoles } from '@hearth/reaction-roles-core';
 import { tickets as enTickets, format } from '@hearth/tickets-core';
 import { verification as enVerification } from '@hearth/verification-core';
 
@@ -8,7 +8,7 @@ import { common as enCommon } from './en/common.js';
 
 // `tickets` is the canonical ticket-domain copy bundle, owned by
 // @hearth/tickets-core so the dashboard can read identical strings.
-// `verification` and `selfRoles` are owned by their domain packages, same
+// `verification` and `reactionRoles` are owned by their domain packages, same
 // shape and reasoning. `common` is bot-specific (boot logs, generic
 // command errors) and lives here. Locale switching is a no-op today
 // (single 'en' bundle shipped) — the structure is preserved so adding a
@@ -18,7 +18,7 @@ const dictionaries = {
     common: enCommon,
     tickets: enTickets,
     verification: enVerification,
-    selfRoles: enSelfRoles,
+    reactionRoles: enReactionRoles,
   },
 } as const;
 

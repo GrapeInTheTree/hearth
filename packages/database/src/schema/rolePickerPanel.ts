@@ -35,7 +35,7 @@ export const rolePickerPanel = pgTable(
     channelId: text('channelId').notNull(),
     // Placeholder until the bot posts the message and writes back the
     // real Discord message id. Same pattern as Panel / VerificationPanel
-    // / SelfRolesPanel.
+    // / ReactionRolesPanel.
     messageId: text('messageId').notNull(),
     embedTitle: text('embedTitle').notNull(),
     embedDescription: text('embedDescription').notNull(),

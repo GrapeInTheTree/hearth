@@ -1,6 +1,6 @@
 import { dbDrizzle, type DbDrizzle } from '@hearth/database';
+import { ReactionRolesService } from '@hearth/reaction-roles-core';
 import { RolePickerService } from '@hearth/role-picker-core';
-import { SelfRolesService } from '@hearth/self-roles-core';
 import {
   GuildConfigService,
   PanelService,
@@ -18,7 +18,7 @@ export interface Services {
   readonly panel: PanelService;
   readonly ticket: TicketService;
   readonly verification: VerificationService;
-  readonly selfRoles: SelfRolesService;
+  readonly reactionRoles: ReactionRolesService;
   readonly rolePicker: RolePickerService;
 }
 
@@ -54,7 +54,7 @@ export function attachServices(gateway: DiscordGateway): void {
   const panel = new PanelService(dbDrizzle, gateway, branding);
   const ticket = new TicketService(dbDrizzle, gateway, branding, guildConfig, panel);
   const verification = new VerificationService(dbDrizzle, gateway, branding);
-  const selfRoles = new SelfRolesService(dbDrizzle, gateway, branding);
+  const reactionRoles = new ReactionRolesService(dbDrizzle, gateway, branding);
   const rolePicker = new RolePickerService(dbDrizzle, gateway, branding);
-  container.services = { guildConfig, panel, ticket, verification, selfRoles, rolePicker };
+  container.services = { guildConfig, panel, ticket, verification, reactionRoles, rolePicker };
 }

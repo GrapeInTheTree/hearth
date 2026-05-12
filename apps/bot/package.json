@@ -21,7 +21,7 @@
   "dependencies": {
     "@hearth/database": "workspace:*",
     "@hearth/role-picker-core": "workspace:*",
-    "@hearth/self-roles-core": "workspace:*",
+    "@hearth/reaction-roles-core": "workspace:*",
     "@hearth/shared": "workspace:*",
     "@hearth/tickets-core": "workspace:*",
     "@hearth/verification-core": "workspace:*",

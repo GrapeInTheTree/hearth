@@ -1,0 +1,282 @@
+import { DiscordApiError } from '@hearth/shared';
+import type {
+  CreateTicketChannelInput,
+  DiscordGateway,
+  ModlogEmbed,
+  PanelMessagePayload,
+  RolePickerMessagePayload,
+  ReactionRolesMessagePayload,
+  SendWelcomeMessageInput,
+  VerificationMessagePayload,
+} from '@hearth/tickets-core';
+
+// In-memory DiscordGateway double for reaction-roles-core. Records every call so
+// assertions can verify side-effect order, and honours an optional `throwOn`
+// set + flags for the role-op failure paths so 'noop' branches are exercised
+// without standing up real Discord errors at the test site.
+
+type WelcomeMessagePayloadShape = Record<string, unknown>;
+
+export interface FakeGatewayCall {
+  readonly op: string;
+  readonly args: unknown;
+}
+
+export interface FakeGatewayOptions {
+  readonly nextChannelId?: () => string;
+  readonly nextMessageId?: () => string;
+  readonly throwOn?: ReadonlySet<string>;
+  /** Member→role membership snapshot. Key: `<guildId>:<userId>:<roleId>`. */
+  readonly memberRoles?: ReadonlySet<string>;
+  /** When true, assignRoleToMember rejects with a DiscordApiError simulating
+   *  a 50013 (Missing Permissions) so the service maps to 'noop'. */
+  readonly failAssignAsDiscordError?: boolean;
+  /** When true, removeRoleFromMember rejects with a DiscordApiError so the
+   *  service maps the reaction-remove path to 'noop'. */
+  readonly failRemoveAsDiscordError?: boolean;
+}
+
+export class FakeDiscordGateway implements DiscordGateway {
+  public readonly calls: FakeGatewayCall[] = [];
+  private channelCounter = 0;
+  private messageCounter = 0;
+  private readonly grantedRoles = new Set<string>();
+
+  public constructor(private readonly options: FakeGatewayOptions = {}) {}
+
+  public async createTicketChannel(
+    input: CreateTicketChannelInput,
+  ): Promise<{ channelId: string }> {
+    this.record('createTicketChannel', input);
+    this.maybeThrow('createTicketChannel');
+    const channelId = this.options.nextChannelId?.() ?? `chan-${String(++this.channelCounter)}`;
+    return Promise.resolve({ channelId });
+  }
+
+  public async sendWelcomeMessage(input: SendWelcomeMessageInput): Promise<{ messageId: string }> {
+    this.record('sendWelcomeMessage', input);
+    this.maybeThrow('sendWelcomeMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
+  public editWelcomeMessage(
+    channelId: string,
+    messageId: string,
+    payload: WelcomeMessagePayloadShape,
+  ): Promise<void> {
+    this.record('editWelcomeMessage', { channelId, messageId, payload });
+    this.maybeThrow('editWelcomeMessage');
+    return Promise.resolve();
+  }
+
+  public postSystemMessage(channelId: string, content: string): Promise<void> {
+    this.record('postSystemMessage', { channelId, content });
+    this.maybeThrow('postSystemMessage');
+    return Promise.resolve();
+  }
+
+  public moveChannelToCategory(channelId: string, categoryId: string): Promise<void> {
+    this.record('moveChannelToCategory', { channelId, categoryId });
+    this.maybeThrow('moveChannelToCategory');
+    return Promise.resolve();
+  }
+
+  public setOpenerSendMessages(channelId: string, openerId: string, allow: boolean): Promise<void> {
+    this.record('setOpenerSendMessages', { channelId, openerId, allow });
+    this.maybeThrow('setOpenerSendMessages');
+    return Promise.resolve();
+  }
+
+  public countCategoryChildren(categoryId: string): Promise<number> {
+    this.record('countCategoryChildren', { categoryId });
+    this.maybeThrow('countCategoryChildren');
+    return Promise.resolve(0);
+  }
+
+  public deleteChannel(channelId: string, reason: string): Promise<void> {
+    this.record('deleteChannel', { channelId, reason });
+    this.maybeThrow('deleteChannel');
+    return Promise.resolve();
+  }
+
+  public postModlogSummary(logChannelId: string, embed: ModlogEmbed): Promise<void> {
+    this.record('postModlogSummary', { logChannelId, embed });
+    this.maybeThrow('postModlogSummary');
+    return Promise.resolve();
+  }
+
+  public async sendPanelMessage(
+    channelId: string,
+    payload: PanelMessagePayload,
+  ): Promise<{ messageId: string }> {
+    this.record('sendPanelMessage', { channelId, payload });
+    this.maybeThrow('sendPanelMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
+  public editPanelMessage(
+    channelId: string,
+    messageId: string,
+    payload: PanelMessagePayload,
+  ): Promise<void> {
+    this.record('editPanelMessage', { channelId, messageId, payload });
+    this.maybeThrow('editPanelMessage');
+    return Promise.resolve();
+  }
+
+  public deletePanelMessage(channelId: string, messageId: string): Promise<void> {
+    this.record('deletePanelMessage', { channelId, messageId });
+    this.maybeThrow('deletePanelMessage');
+    return Promise.resolve();
+  }
+
+  public resolveMemberDisplay(guildId: string, userId: string): Promise<string> {
+    this.record('resolveMemberDisplay', { guildId, userId });
+    this.maybeThrow('resolveMemberDisplay');
+    return Promise.resolve(`Display(${userId})`);
+  }
+
+  public async sendVerificationMessage(
+    channelId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<{ messageId: string }> {
+    this.record('sendVerificationMessage', { channelId, payload });
+    this.maybeThrow('sendVerificationMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
+  public editVerificationMessage(
+    channelId: string,
+    messageId: string,
+    payload: VerificationMessagePayload,
+  ): Promise<void> {
+    this.record('editVerificationMessage', { channelId, messageId, payload });
+    this.maybeThrow('editVerificationMessage');
+    return Promise.resolve();
+  }
+
+  public deleteVerificationMessage(channelId: string, messageId: string): Promise<void> {
+    this.record('deleteVerificationMessage', { channelId, messageId });
+    this.maybeThrow('deleteVerificationMessage');
+    return Promise.resolve();
+  }
+
+  public assignRoleToMember(guildId: string, userId: string, roleId: string): Promise<void> {
+    this.record('assignRoleToMember', { guildId, userId, roleId });
+    this.maybeThrow('assignRoleToMember');
+    if (this.options.failAssignAsDiscordError === true) {
+      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
+    }
+    this.grantedRoles.add(membershipKey(guildId, userId, roleId));
+    return Promise.resolve();
+  }
+
+  public memberHasRole(guildId: string, userId: string, roleId: string): Promise<boolean> {
+    this.record('memberHasRole', { guildId, userId, roleId });
+    this.maybeThrow('memberHasRole');
+    const key = membershipKey(guildId, userId, roleId);
+    const seeded = this.options.memberRoles?.has(key) === true;
+    return Promise.resolve(seeded || this.grantedRoles.has(key));
+  }
+
+  public async sendReactionRolesMessage(
+    channelId: string,
+    payload: ReactionRolesMessagePayload,
+  ): Promise<{ messageId: string }> {
+    this.record('sendReactionRolesMessage', { channelId, payload });
+    this.maybeThrow('sendReactionRolesMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
+  public editReactionRolesMessage(
+    channelId: string,
+    messageId: string,
+    payload: ReactionRolesMessagePayload,
+  ): Promise<void> {
+    this.record('editReactionRolesMessage', { channelId, messageId, payload });
+    this.maybeThrow('editReactionRolesMessage');
+    return Promise.resolve();
+  }
+
+  public deleteReactionRolesMessage(channelId: string, messageId: string): Promise<void> {
+    this.record('deleteReactionRolesMessage', { channelId, messageId });
+    this.maybeThrow('deleteReactionRolesMessage');
+    return Promise.resolve();
+  }
+
+  public syncBotReactions(
+    channelId: string,
+    messageId: string,
+    desiredEmojis: readonly string[],
+  ): Promise<void> {
+    this.record('syncBotReactions', { channelId, messageId, desiredEmojis });
+    this.maybeThrow('syncBotReactions');
+    return Promise.resolve();
+  }
+
+  // Role-picker methods — stubbed here so the composite DiscordGateway
+  // type is satisfied. Self-roles tests don't exercise these; the
+  // role-picker-core package ships its own FakeGateway that records the
+  // role-picker side of the seam.
+  public async sendRolePickerMessage(
+    channelId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<{ messageId: string }> {
+    this.record('sendRolePickerMessage', { channelId, payload });
+    this.maybeThrow('sendRolePickerMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
+  public editRolePickerMessage(
+    channelId: string,
+    messageId: string,
+    payload: RolePickerMessagePayload,
+  ): Promise<void> {
+    this.record('editRolePickerMessage', { channelId, messageId, payload });
+    this.maybeThrow('editRolePickerMessage');
+    return Promise.resolve();
+  }
+
+  public deleteRolePickerMessage(channelId: string, messageId: string): Promise<void> {
+    this.record('deleteRolePickerMessage', { channelId, messageId });
+    this.maybeThrow('deleteRolePickerMessage');
+    return Promise.resolve();
+  }
+
+  public removeRoleFromMember(guildId: string, userId: string, roleId: string): Promise<void> {
+    this.record('removeRoleFromMember', { guildId, userId, roleId });
+    this.maybeThrow('removeRoleFromMember');
+    if (this.options.failRemoveAsDiscordError === true) {
+      return Promise.reject(new DiscordApiError('Missing Permissions (50013)', 403, undefined));
+    }
+    this.grantedRoles.delete(membershipKey(guildId, userId, roleId));
+    return Promise.resolve();
+  }
+
+  public callsOf(op: string): FakeGatewayCall[] {
+    return this.calls.filter((c) => c.op === op);
+  }
+
+  public reset(): void {
+    this.calls.length = 0;
+  }
+
+  private record(op: string, args: unknown): void {
+    this.calls.push({ op, args });
+  }
+
+  private maybeThrow(op: string): void {
+    if (this.options.throwOn?.has(op) === true) {
+      throw new Error(`FakeGateway: ${op} configured to throw`);
+    }
+  }
+}
+
+function membershipKey(guildId: string, userId: string, roleId: string): string {
+  return `${guildId}:${userId}:${roleId}`;
+}

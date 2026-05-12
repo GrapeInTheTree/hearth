@@ -12,14 +12,14 @@ import { rolePickerPanel } from './rolePickerPanel.js';
 //                           10014 / etc.). User's prior state preserved.
 //   'role_revoke_failed'  — revoke rejected by Discord. Same.
 //
-// Two failure variants (instead of self-roles' single 'noop'): the diff
+// Two failure variants (instead of reaction-roles' single 'noop'): the diff
 // engine knows which direction failed, and operators reading the log
 // want to know whether the user was supposed to gain or lose the role.
 //
 // Stored as text rather than an enum so future actions ('cooldown',
 // 'rate_limited', etc.) can be added without a schema migration.
 //
-// Retention model — same as self-roles after Q3 (PR #41):
+// Retention model — same as reaction-roles after Q3 (PR #41):
 //   panel delete → cascade (operator removed the panel, intentional
 //                  history loss; panel = retention boundary)
 //   option delete → SET NULL on optionId, snapshot columns survive

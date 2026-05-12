@@ -4,7 +4,7 @@ import type {
   DiscordGateway,
   ModlogEmbed,
   PanelMessagePayload,
-  SelfRolesMessagePayload,
+  ReactionRolesMessagePayload,
   SendWelcomeMessageInput,
   VerificationMessagePayload,
 } from '@hearth/tickets-core';
@@ -183,29 +183,29 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve(seeded || this.grantedRoles.has(key));
   }
 
-  public async sendSelfRolesMessage(
+  public async sendReactionRolesMessage(
     channelId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<{ messageId: string }> {
-    this.record('sendSelfRolesMessage', { channelId, payload });
-    this.maybeThrow('sendSelfRolesMessage');
+    this.record('sendReactionRolesMessage', { channelId, payload });
+    this.maybeThrow('sendReactionRolesMessage');
     const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
     return Promise.resolve({ messageId });
   }
 
-  public editSelfRolesMessage(
+  public editReactionRolesMessage(
     channelId: string,
     messageId: string,
-    payload: SelfRolesMessagePayload,
+    payload: ReactionRolesMessagePayload,
   ): Promise<void> {
-    this.record('editSelfRolesMessage', { channelId, messageId, payload });
-    this.maybeThrow('editSelfRolesMessage');
+    this.record('editReactionRolesMessage', { channelId, messageId, payload });
+    this.maybeThrow('editReactionRolesMessage');
     return Promise.resolve();
   }
 
-  public deleteSelfRolesMessage(channelId: string, messageId: string): Promise<void> {
-    this.record('deleteSelfRolesMessage', { channelId, messageId });
-    this.maybeThrow('deleteSelfRolesMessage');
+  public deleteReactionRolesMessage(channelId: string, messageId: string): Promise<void> {
+    this.record('deleteReactionRolesMessage', { channelId, messageId });
+    this.maybeThrow('deleteReactionRolesMessage');
     return Promise.resolve();
   }
 

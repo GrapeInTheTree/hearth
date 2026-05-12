@@ -22,6 +22,8 @@ const MIGRATION_PATHS = [
   resolve(__dirname, '../../../../packages/database/drizzle/0001_verification.sql'),
   resolve(__dirname, '../../../../packages/database/drizzle/0002_self_roles.sql'),
   resolve(__dirname, '../../../../packages/database/drizzle/0003_self_roles_audit_retention.sql'),
+  resolve(__dirname, '../../../../packages/database/drizzle/0004_role_picker.sql'),
+  resolve(__dirname, '../../../../packages/database/drizzle/0005_reaction_roles_rename.sql'),
 ];
 
 let cachedSql: string | undefined;

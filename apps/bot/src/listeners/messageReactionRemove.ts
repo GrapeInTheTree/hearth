@@ -1,4 +1,4 @@
-import { SelfRolesAction } from '@hearth/database';
+import { ReactionRolesAction } from '@hearth/database';
 import { Events, Listener } from '@sapphire/framework';
 import type { MessageReaction, PartialMessageReaction, PartialUser, User } from 'discord.js';
 
@@ -44,7 +44,7 @@ export class MessageReactionRemoveListener extends Listener<typeof Events.Messag
         ? `<:${reaction.emoji.name ?? ''}:${reaction.emoji.id}>`
         : (reaction.emoji.name ?? '');
 
-    const result = await this.container.services.selfRoles.handleReactionRemove({
+    const result = await this.container.services.reactionRoles.handleReactionRemove({
       messageId: reaction.message.id,
       emoji: emojiKey,
       userId: user.id,
@@ -53,7 +53,7 @@ export class MessageReactionRemoveListener extends Listener<typeof Events.Messag
     if (!result.ok) {
       this.container.logger.warn(
         { err: result.error, panel: reaction.message.id, emoji: emojiKey },
-        'self-roles reaction remove failed unexpectedly',
+        'reaction-roles reaction remove failed unexpectedly',
       );
       return;
     }
@@ -66,9 +66,9 @@ export class MessageReactionRemoveListener extends Listener<typeof Events.Messag
         guildId: reaction.message.guildId,
         roleId: result.value.roleId,
       },
-      result.value.action === SelfRolesAction.revoked
-        ? 'self-roles role revoked'
-        : 'self-roles remove noop (role op rejected or emoji not bound)',
+      result.value.action === ReactionRolesAction.revoked
+        ? 'reaction-roles role revoked'
+        : 'reaction-roles remove noop (role op rejected or emoji not bound)',
     );
   }
 }
