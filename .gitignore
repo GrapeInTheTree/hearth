@@ -58,6 +58,9 @@ packages/database/prisma/migrations/.lock
 
 # Local Claude Code
 .claude/settings.local.json
+# Project context/status lives in the Obsidian vault + auto-memory, not
+# the repo. CLAUDE.md is a local-only working file from 2026-05-18 on.
+CLAUDE.md
 
 # Next.js
 apps/dashboard/.next/
