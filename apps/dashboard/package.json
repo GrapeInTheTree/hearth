@@ -23,6 +23,7 @@
     "@hearth/shared": "workspace:*",
     "@hearth/tickets-core": "workspace:*",
     "@hearth/verification-core": "workspace:*",
+    "@hearth/x-watcher-core": "workspace:*",
     "@hookform/resolvers": "3.10.0",
     "@paralleldrive/cuid2": "3.3.0",
     "@radix-ui/react-dialog": "1.1.15",

@@ -23,6 +23,7 @@ COPY packages/tickets-core/package.json ./packages/tickets-core/
 COPY packages/verification-core/package.json ./packages/verification-core/
 COPY packages/reaction-roles-core/package.json ./packages/reaction-roles-core/
 COPY packages/role-picker-core/package.json ./packages/role-picker-core/
+COPY packages/x-watcher-core/package.json ./packages/x-watcher-core/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 
@@ -48,6 +49,7 @@ RUN pnpm --filter @hearth/database run db:generate; \
     pnpm --filter @hearth/verification-core run build && \
     pnpm --filter @hearth/reaction-roles-core run build && \
     pnpm --filter @hearth/role-picker-core run build && \
+    pnpm --filter @hearth/x-watcher-core run build && \
     pnpm --filter @hearth/dashboard run build
 
 # ──────────────────────────────────────────────────────────────────
