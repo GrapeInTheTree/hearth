@@ -30,6 +30,19 @@ const EnvSchema = z.object({
   TICKET_ARCHIVE_CATEGORY_ID: SnowflakeSchema.optional(),
   BOT_LOG_CHANNEL_ID: SnowflakeSchema.optional(),
 
+  // X-watcher (X → Discord post mirror)
+  // Which feed backend supplies posts. 'none' = disabled (no API key / RSS
+  // feed configured yet) — the bot boots and simply mirrors nothing. The
+  // feature is built source-agnostic: when a backend is available, adding
+  // it is a new XFeedSource implementation + a branch in
+  // services/xFeedSourceFactory.ts + a value in this enum. Nothing else
+  // (poller, service, schema, dashboard) changes.
+  X_FEED_SOURCE: z.enum(['none']).default('none'),
+  // How often (seconds) the poller checks each enabled watcher for new
+  // posts. Default 5 minutes — well within any source's rate budget for a
+  // handful of low-volume accounts.
+  X_WATCHER_POLL_INTERVAL_SEC: z.coerce.number().int().min(30).max(3600).default(300),
+
   // Observability
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   SENTRY_DSN: z.string().url().optional(),

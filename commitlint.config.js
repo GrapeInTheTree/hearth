@@ -17,6 +17,7 @@ export default {
         'verification',
         'reaction-roles',
         'role-picker',
+        'x-watcher',
         // technical scopes
         'core',
         'config',

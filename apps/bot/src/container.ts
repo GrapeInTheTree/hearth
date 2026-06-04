@@ -8,10 +8,13 @@ import {
   type DiscordGateway,
 } from '@hearth/tickets-core';
 import { VerificationService } from '@hearth/verification-core';
+import { XWatcherService, type PollLogger } from '@hearth/x-watcher-core';
 import { container } from '@sapphire/framework';
 
 import { branding, type Branding } from './config/branding.js';
 import { env, type Env } from './config/env.js';
+import { XWatcherPoller } from './jobs/xWatcherPoller.js';
+import { createXFeedSource } from './services/xFeedSourceFactory.js';
 
 export interface Services {
   readonly guildConfig: GuildConfigService;
@@ -20,7 +23,27 @@ export interface Services {
   readonly verification: VerificationService;
   readonly reactionRoles: ReactionRolesService;
   readonly rolePicker: RolePickerService;
+  readonly xWatcher: XWatcherService;
 }
+
+// Adapt Sapphire's container logger to the structured PollLogger the
+// x-watcher poller expects. Reads container.logger lazily (at call time)
+// so it's safe to build during attachServices, before the logger plugin
+// has fully settled.
+const pollLogger: PollLogger = {
+  info: (msg, meta) => {
+    if (meta) container.logger.info(msg, meta);
+    else container.logger.info(msg);
+  },
+  warn: (msg, meta) => {
+    if (meta) container.logger.warn(msg, meta);
+    else container.logger.warn(msg);
+  },
+  error: (msg, meta) => {
+    if (meta) container.logger.error(msg, meta);
+    else container.logger.error(msg);
+  },
+};
 
 declare module '@sapphire/pieces' {
   interface Container {
@@ -34,6 +57,11 @@ declare module '@sapphire/pieces' {
      */
     gateway: DiscordGateway;
     services: Services;
+    /**
+     * The X-watcher poller. Wired in attachServices; started from the
+     * ready listener (needs the live gateway) and stopped on shutdown.
+     */
+    xWatcherPoller: XWatcherPoller;
   }
 }
 
@@ -56,5 +84,21 @@ export function attachServices(gateway: DiscordGateway): void {
   const verification = new VerificationService(dbDrizzle, gateway, branding);
   const reactionRoles = new ReactionRolesService(dbDrizzle, gateway, branding);
   const rolePicker = new RolePickerService(dbDrizzle, gateway, branding);
-  container.services = { guildConfig, panel, ticket, verification, reactionRoles, rolePicker };
+  const xWatcher = new XWatcherService(dbDrizzle);
+  container.services = {
+    guildConfig,
+    panel,
+    ticket,
+    verification,
+    reactionRoles,
+    rolePicker,
+    xWatcher,
+  };
+  container.xWatcherPoller = new XWatcherPoller({
+    service: xWatcher,
+    source: createXFeedSource(env, pollLogger),
+    gateway,
+    logger: pollLogger,
+    intervalMs: env.X_WATCHER_POLL_INTERVAL_SEC * 1000,
+  });
 }

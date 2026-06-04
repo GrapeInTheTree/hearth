@@ -23,6 +23,7 @@ import {
   handleVerificationRender,
   handleVerificationRepost,
 } from './routes/verifications.js';
+import { handleXWatcherPoll } from './routes/x-watcher.js';
 import type { InternalApiContext } from './types.js';
 
 export interface StartInternalApiOptions {
@@ -207,6 +208,14 @@ function matchRoute(
       requireAuth: true,
       handle: async () => handleRolePickerRevokeHolders(ctx, panelId, optionId, res),
     };
+  }
+
+  // ── x-watcher (X → Discord post mirror) ──
+  const xWatcherPollMatch = /^\/internal\/x-watcher\/([^/]+)\/poll$/.exec(pathname);
+  if (method === 'POST' && xWatcherPollMatch !== null) {
+    const [, watcherId] = xWatcherPollMatch;
+    if (watcherId === undefined) return null;
+    return { requireAuth: true, handle: async () => handleXWatcherPoll(ctx, watcherId, res) };
   }
 
   return null;

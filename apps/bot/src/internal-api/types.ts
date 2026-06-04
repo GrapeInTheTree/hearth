@@ -3,9 +3,11 @@ import type { ReactionRolesService } from '@hearth/reaction-roles-core';
 import type { RolePickerService } from '@hearth/role-picker-core';
 import type { PanelService } from '@hearth/tickets-core';
 import type { VerificationService } from '@hearth/verification-core';
+import type { XWatcherService } from '@hearth/x-watcher-core';
 import type { Client } from 'discord.js';
 
 import type { Branding } from '../config/branding.js';
+import type { XWatcherPoller } from '../jobs/xWatcherPoller.js';
 
 /**
  * Dependencies injected into every internal-api route handler. The server
@@ -20,6 +22,10 @@ export interface InternalApiContext {
   readonly verification: VerificationService;
   readonly reactionRoles: ReactionRolesService;
   readonly rolePicker: RolePickerService;
+  readonly xWatcher: XWatcherService;
+  /** The X-watcher poller — used by the dashboard "Poll now" route to run
+   *  one watcher's poll on demand. */
+  readonly xWatcherPoller: XWatcherPoller;
   readonly branding: Branding;
   /** Returns true when the bot's gateway connection is OPEN (used by /healthz). */
   readonly isReady: () => boolean;
