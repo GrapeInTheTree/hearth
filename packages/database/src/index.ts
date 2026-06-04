@@ -24,6 +24,9 @@ export {
   VerificationOutcome,
   type VerificationOption,
   type VerificationPanel,
+  type XWatcher,
+  type XWatcherEvent,
+  XWatcherEventStatus,
 } from './types.js';
 export { TicketStatusValues } from './schema/_enums.js';
 export {
