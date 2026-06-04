@@ -24,6 +24,7 @@ export const en = {
     verification: 'Verification',
     reactionRoles: 'Reaction Roles',
     rolePicker: 'Role picker',
+    xWatcher: 'X feed',
     settings: 'Settings',
     sectionWorkspace: 'Workspace',
     sectionAccount: 'Account',

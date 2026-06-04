@@ -5,6 +5,7 @@ import {
   Languages,
   LayoutDashboard,
   ListChecks,
+  Rss,
   Settings,
   ShieldCheck,
   Tag,
@@ -47,6 +48,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
       { href: '/verification', label: () => t.nav.verification, icon: ShieldCheck },
       { href: '/reaction-roles', label: () => t.nav.reactionRoles, icon: Languages },
       { href: '/role-picker', label: () => t.nav.rolePicker, icon: ListChecks },
+      { href: '/x-watcher', label: () => t.nav.xWatcher, icon: Rss },
     ],
   },
   {
