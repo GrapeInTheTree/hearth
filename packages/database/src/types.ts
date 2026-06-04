@@ -21,6 +21,8 @@ export type ReactionRolesEvent = InferSelectModel<typeof schema.reactionRolesEve
 export type RolePickerPanel = InferSelectModel<typeof schema.rolePickerPanel>;
 export type RolePickerOption = InferSelectModel<typeof schema.rolePickerOption>;
 export type RolePickerEvent = InferSelectModel<typeof schema.rolePickerEvent>;
+export type XWatcher = InferSelectModel<typeof schema.xWatcher>;
+export type XWatcherEvent = InferSelectModel<typeof schema.xWatcherEvent>;
 
 // TicketEvent.metadata holds an arbitrary JSON object (column is `jsonb`,
 // nullable). Existing prod rows mix shapes per event type — opened events
@@ -83,3 +85,22 @@ export const RolePickerAction = {
   roleRevokeFailed: 'role_revoke_failed',
 } as const;
 export type RolePickerAction = (typeof RolePickerAction)[keyof typeof RolePickerAction];
+
+// Outcome recorded on every post the X-watcher poller observes. Stored as
+// text in XWatcherEvent.status so a new outcome can be added without a
+// schema migration.
+//   posted          — mirrored to Discord (postedMessageId set)
+//   skipped_retweet — a retweet; excluded unconditionally per spec
+//   skipped_reply   — a reply and the watcher has includeReplies=false
+//   skipped_quote   — a quote post and the watcher has includeQuotes=false
+//                     (quotes are mirrored by default; this is the opt-out)
+//   send_failed     — postable but the Discord send threw; cursor still
+//                     advances so one bad post doesn't wedge the feed
+export const XWatcherEventStatus = {
+  posted: 'posted',
+  skippedRetweet: 'skipped_retweet',
+  skippedReply: 'skipped_reply',
+  skippedQuote: 'skipped_quote',
+  sendFailed: 'send_failed',
+} as const;
+export type XWatcherEventStatus = (typeof XWatcherEventStatus)[keyof typeof XWatcherEventStatus];

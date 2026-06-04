@@ -21,3 +21,5 @@ export { reactionRolesEvent, reactionRolesEventRelations } from './reactionRoles
 export { rolePickerPanel, rolePickerPanelRelations } from './rolePickerPanel.js';
 export { rolePickerOption, rolePickerOptionRelations } from './rolePickerOption.js';
 export { rolePickerEvent, rolePickerEventRelations } from './rolePickerEvent.js';
+export { xWatcher, xWatcherRelations } from './xWatcher.js';
+export { xWatcherEvent, xWatcherEventRelations } from './xWatcherEvent.js';

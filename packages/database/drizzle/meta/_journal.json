@@ -43,6 +43,13 @@
       "when": 1778597000000,
       "tag": "0005_reaction_roles_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780540190317,
+      "tag": "0006_known_vapor",
+      "breakpoints": true
     }
   ]
 }
