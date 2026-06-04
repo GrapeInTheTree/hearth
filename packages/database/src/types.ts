@@ -92,12 +92,15 @@ export type RolePickerAction = (typeof RolePickerAction)[keyof typeof RolePicker
 //   posted          — mirrored to Discord (postedMessageId set)
 //   skipped_retweet — a retweet; excluded unconditionally per spec
 //   skipped_reply   — a reply and the watcher has includeReplies=false
+//   skipped_quote   — a quote post and the watcher has includeQuotes=false
+//                     (quotes are mirrored by default; this is the opt-out)
 //   send_failed     — postable but the Discord send threw; cursor still
 //                     advances so one bad post doesn't wedge the feed
 export const XWatcherEventStatus = {
   posted: 'posted',
   skippedRetweet: 'skipped_retweet',
   skippedReply: 'skipped_reply',
+  skippedQuote: 'skipped_quote',
   sendFailed: 'send_failed',
 } as const;
 export type XWatcherEventStatus = (typeof XWatcherEventStatus)[keyof typeof XWatcherEventStatus];
