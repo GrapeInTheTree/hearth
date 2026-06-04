@@ -75,6 +75,13 @@ export default async function XWatcherDetailPage({
     { label: 'Replies', value: watcher.includeReplies ? 'Mirrored' : 'Skipped' },
     { label: 'Retweets', value: 'Never mirrored' },
     {
+      label: 'Check frequency',
+      value:
+        watcher.pollIntervalSec % 3600 === 0
+          ? `Every ${String(watcher.pollIntervalSec / 3600)}h`
+          : `Every ${String(Math.round(watcher.pollIntervalSec / 60))} min`,
+    },
+    {
       label: 'Last checked',
       value: watcher.lastCheckedAt !== null ? watcher.lastCheckedAt.toLocaleString() : 'Never',
     },

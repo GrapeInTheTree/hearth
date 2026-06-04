@@ -32,6 +32,14 @@ const toBool = (v: unknown): unknown => {
   return v;
 };
 
+// Per-watcher poll cadence bounds (seconds). 30s floor / 1h ceiling —
+// matches the base-tick env range. The base tick effectively floors the
+// real cadence, so values below the base just behave as the base.
+const pollIntervalSec = z.preprocess(
+  (v) => (v === '' || v === undefined ? undefined : Number(v)),
+  z.number().int().min(30).max(3600).optional(),
+);
+
 /** `/xwatcher add` (or dashboard "New watcher" form) input. */
 export const XWatcherInputSchema = z.object({
   guildId: SnowflakeSchema,
@@ -40,6 +48,7 @@ export const XWatcherInputSchema = z.object({
   includeQuotes: z.preprocess(toBool, z.boolean().optional()),
   includeReplies: z.preprocess(toBool, z.boolean().optional()),
   enabled: z.preprocess(toBool, z.boolean().optional()),
+  pollIntervalSec,
 });
 export type XWatcherInput = z.infer<typeof XWatcherInputSchema>;
 
@@ -50,5 +59,6 @@ export const XWatcherEditSchema = z.object({
   includeQuotes: z.preprocess(toBool, z.boolean().optional()),
   includeReplies: z.preprocess(toBool, z.boolean().optional()),
   enabled: z.preprocess(toBool, z.boolean().optional()),
+  pollIntervalSec,
 });
 export type XWatcherEdit = z.infer<typeof XWatcherEditSchema>;

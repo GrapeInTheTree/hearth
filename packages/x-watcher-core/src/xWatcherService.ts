@@ -4,8 +4,11 @@ import {
   type DbDrizzle,
   desc,
   eq,
+  isNull,
   isUniqueViolation,
+  or,
   schema,
+  sql,
   type XWatcher,
   type XWatcherEvent,
   type XWatcherEventStatus,
@@ -32,6 +35,8 @@ export interface XWatcherInput {
   readonly includeReplies?: boolean;
   /** Defaults to true. */
   readonly enabled?: boolean;
+  /** Per-watcher poll cadence (seconds). Defaults to 300 (5 min). */
+  readonly pollIntervalSec?: number;
 }
 
 // The source account is immutable: changing it would orphan the dedupe
@@ -42,6 +47,7 @@ export interface XWatcherEditInput {
   readonly includeQuotes?: boolean;
   readonly includeReplies?: boolean;
   readonly enabled?: boolean;
+  readonly pollIntervalSec?: number;
 }
 
 /** Fields the poller writes when recording one observed post. */
@@ -70,6 +76,9 @@ export class XWatcherService {
           ...(input.includeQuotes !== undefined ? { includeQuotes: input.includeQuotes } : {}),
           ...(input.includeReplies !== undefined ? { includeReplies: input.includeReplies } : {}),
           ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+          ...(input.pollIntervalSec !== undefined
+            ? { pollIntervalSec: input.pollIntervalSec }
+            : {}),
         })
         .returning();
       if (created === undefined) throw new Error('Failed to insert XWatcher');
@@ -93,6 +102,7 @@ export class XWatcherService {
     if (input.includeQuotes !== undefined) updates.includeQuotes = input.includeQuotes;
     if (input.includeReplies !== undefined) updates.includeReplies = input.includeReplies;
     if (input.enabled !== undefined) updates.enabled = input.enabled;
+    if (input.pollIntervalSec !== undefined) updates.pollIntervalSec = input.pollIntervalSec;
 
     if (Object.keys(updates).length === 0) {
       const existing = await this.getWatcherRow(watcherId);
@@ -143,10 +153,32 @@ export class XWatcherService {
 
   // ─── poller support (pollWatcherOnce calls these) ───────────────
 
-  /** Every enabled watcher across all guilds this bot serves — the
-   *  poller's work list each tick. */
+  /** Every enabled watcher across all guilds this bot serves. */
   public getEnabledWatchers(): Promise<XWatcher[]> {
     return this.db.select().from(schema.xWatcher).where(eq(schema.xWatcher.enabled, true));
+  }
+
+  /**
+   * Enabled watchers that are DUE for a poll as of `now` — i.e. never
+   * checked, or `lastCheckedAt + pollIntervalSec` has elapsed. This is the
+   * poller's per-tick work list: the bot ticks on a fixed base cadence and
+   * each tick only polls the watchers whose own interval has come round,
+   * giving per-watcher cadence with a single timer. `now` is passed in
+   * (not SQL now()) so the due logic is deterministically testable.
+   */
+  public getDueWatchers(now: Date): Promise<XWatcher[]> {
+    return this.db
+      .select()
+      .from(schema.xWatcher)
+      .where(
+        and(
+          eq(schema.xWatcher.enabled, true),
+          or(
+            isNull(schema.xWatcher.lastCheckedAt),
+            sql`${schema.xWatcher.lastCheckedAt} + (${schema.xWatcher.pollIntervalSec} * interval '1 second') <= ${now}`,
+          ),
+        ),
+      );
   }
 
   /** Persist the lazily-resolved X numeric user id so later polls skip

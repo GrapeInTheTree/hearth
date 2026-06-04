@@ -63,6 +63,7 @@ export default async function EditXWatcherPage({
               channelId: watcher.channelId,
               includeQuotes: watcher.includeQuotes,
               includeReplies: watcher.includeReplies,
+              pollIntervalSec: watcher.pollIntervalSec,
             }}
           />
         )}

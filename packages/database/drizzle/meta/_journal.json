@@ -50,6 +50,13 @@
       "when": 1780540190317,
       "tag": "0006_known_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780551562099,
+      "tag": "0007_tan_rattler",
+      "breakpoints": true
     }
   ]
 }

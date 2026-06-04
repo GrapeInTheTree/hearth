@@ -145,6 +145,62 @@ describe('XWatcherService', () => {
     });
   });
 
+  describe('pollIntervalSec', () => {
+    it('defaults to 300 and is settable on create + edit', async () => {
+      const def = await create();
+      expect(def.pollIntervalSec).toBe(300);
+
+      const custom = await service.createWatcher({
+        guildId,
+        sourceHandle: 'Fast',
+        channelId,
+        pollIntervalSec: 120,
+      });
+      if (isOk(custom)) expect(custom.value.pollIntervalSec).toBe(120);
+
+      const edited = await service.editWatcher(def.id, { pollIntervalSec: 900 });
+      if (isOk(edited)) expect(edited.value.pollIntervalSec).toBe(900);
+    });
+  });
+
+  describe('getDueWatchers', () => {
+    it('is due when never checked (lastCheckedAt NULL)', async () => {
+      const w = await create();
+      const due = await service.getDueWatchers(new Date('2026-06-04T00:00:00Z'));
+      expect(due.map((x) => x.id)).toContain(w.id);
+    });
+
+    it('respects per-watcher interval relative to lastCheckedAt', async () => {
+      const { schema: sch, eq: eqOp } = await import('@hearth/database');
+      const w = await create(); // 300s
+      const checkedAt = new Date('2026-06-04T00:00:00Z');
+      await testDb.db
+        .update(sch.xWatcher)
+        .set({ lastCheckedAt: checkedAt })
+        .where(eqOp(sch.xWatcher.id, w.id));
+
+      // 4 min later → not due (interval 300s = 5 min)
+      const notYet = await service.getDueWatchers(new Date('2026-06-04T00:04:00Z'));
+      expect(notYet.map((x) => x.id)).not.toContain(w.id);
+
+      // 5 min later → due
+      const due = await service.getDueWatchers(new Date('2026-06-04T00:05:00Z'));
+      expect(due.map((x) => x.id)).toContain(w.id);
+    });
+
+    it('excludes disabled watchers even if overdue', async () => {
+      const { schema: sch, eq: eqOp } = await import('@hearth/database');
+      const w = await create();
+      await testDb.db
+        .update(sch.xWatcher)
+        .set({ lastCheckedAt: new Date('2020-01-01T00:00:00Z') })
+        .where(eqOp(sch.xWatcher.id, w.id));
+      await service.setEnabled(w.id, false);
+      const due = await service.getDueWatchers(new Date('2026-06-04T00:00:00Z'));
+      expect(due.map((x) => x.id)).not.toContain(w.id);
+    });
+  });
+
   describe('poller support', () => {
     it('setSourceUserId / markPolled / markChecked persist', async () => {
       const w = await create();

@@ -38,10 +38,14 @@ const EnvSchema = z.object({
   // services/xFeedSourceFactory.ts + a value in this enum. Nothing else
   // (poller, service, schema, dashboard) changes.
   X_FEED_SOURCE: z.enum(['none']).default('none'),
-  // How often (seconds) the poller checks each enabled watcher for new
-  // posts. Default 5 minutes — well within any source's rate budget for a
-  // handful of low-volume accounts.
-  X_WATCHER_POLL_INTERVAL_SEC: z.coerce.number().int().min(30).max(3600).default(300),
+  // The poller's BASE TICK (seconds) — how often the bot wakes to check
+  // which watchers are due. Each watcher has its OWN cadence
+  // (XWatcher.pollIntervalSec, set per-watcher from the dashboard, default
+  // 5 min); the base tick is just the resolution floor, so a watcher can't
+  // actually poll faster than this. Default 60s (1 min). Leave unset for
+  // the default — operators tune per-watcher cadence in the dashboard, not
+  // here.
+  X_WATCHER_POLL_INTERVAL_SEC: z.coerce.number().int().min(30).max(3600).default(60),
 
   // Observability
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
