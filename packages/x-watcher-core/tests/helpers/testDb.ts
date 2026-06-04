@@ -20,6 +20,7 @@ const MIGRATION_PATHS = [
   resolve(__dirname, '../../../database/drizzle/0004_role_picker.sql'),
   resolve(__dirname, '../../../database/drizzle/0005_reaction_roles_rename.sql'),
   resolve(__dirname, '../../../database/drizzle/0006_known_vapor.sql'),
+  resolve(__dirname, '../../../database/drizzle/0007_tan_rattler.sql'),
 ];
 
 let cachedSql: string | undefined;

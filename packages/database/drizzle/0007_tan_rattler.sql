@@ -1,0 +1,1 @@
+ALTER TABLE "XWatcher" ADD COLUMN "pollIntervalSec" integer DEFAULT 300 NOT NULL;

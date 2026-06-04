@@ -29,8 +29,21 @@ interface XWatcherFormProps {
     readonly channelId: string;
     readonly includeQuotes: boolean;
     readonly includeReplies: boolean;
+    readonly pollIntervalSec: number;
   };
 }
+
+// Poll-cadence presets (seconds). Operators pick from these rather than a
+// free number — keeps choices sane and at/above the bot's base tick.
+const INTERVAL_PRESETS: readonly { value: number; label: string }[] = [
+  { value: 60, label: 'Every 1 minute' },
+  { value: 120, label: 'Every 2 minutes' },
+  { value: 300, label: 'Every 5 minutes' },
+  { value: 900, label: 'Every 15 minutes' },
+  { value: 1800, label: 'Every 30 minutes' },
+  { value: 3600, label: 'Every hour' },
+];
+const DEFAULT_INTERVAL = 300;
 
 // Handle format is validated + normalised server-side (the action accepts
 // "@x", a profile URL, or the bare handle). Client-side we only require it
@@ -40,6 +53,7 @@ const FormSchema = z.object({
   channelId: z.string().min(1, 'Channel is required'),
   includeQuotes: z.boolean(),
   includeReplies: z.boolean(),
+  pollIntervalSec: z.coerce.number().int(),
 });
 type FormValues = z.infer<typeof FormSchema>;
 
@@ -60,6 +74,7 @@ export function XWatcherForm({ guildId, channels, initial }: XWatcherFormProps):
       channelId: initial?.channelId ?? '',
       includeQuotes: initial?.includeQuotes ?? true,
       includeReplies: initial?.includeReplies ?? false,
+      pollIntervalSec: initial?.pollIntervalSec ?? DEFAULT_INTERVAL,
     },
   });
 
@@ -72,6 +87,7 @@ export function XWatcherForm({ guildId, channels, initial }: XWatcherFormProps):
             channelId: values.channelId,
             includeQuotes: values.includeQuotes,
             includeReplies: values.includeReplies,
+            pollIntervalSec: values.pollIntervalSec,
           })
         : await createWatcher({
             guildId,
@@ -79,6 +95,7 @@ export function XWatcherForm({ guildId, channels, initial }: XWatcherFormProps):
             channelId: values.channelId,
             includeQuotes: values.includeQuotes,
             includeReplies: values.includeReplies,
+            pollIntervalSec: values.pollIntervalSec,
           });
       if (!result.ok) {
         toast.error(result.error.message);
@@ -193,6 +210,25 @@ export function XWatcherForm({ guildId, channels, initial }: XWatcherFormProps):
           </span>
         </label>
       </fieldset>
+
+      <div className="grid gap-2">
+        <Label htmlFor="x-watcher-interval">Check frequency</Label>
+        <select
+          id="x-watcher-interval"
+          className="h-9 rounded-[var(--radius)] border bg-[color:var(--color-bg)] px-3 text-sm"
+          {...register('pollIntervalSec')}
+        >
+          {INTERVAL_PRESETS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-[color:var(--color-fg-muted)]">
+          How often the bot checks this account for new posts. Lower = faster, but more X API reads
+          (cost). 5 minutes is a good default.
+        </p>
+      </div>
 
       <div className="flex justify-end gap-2 pt-1">
         <Button type="submit" disabled={isSubmitting}>

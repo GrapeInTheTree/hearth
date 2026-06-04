@@ -25,6 +25,7 @@ export async function createWatcher(args: {
   readonly channelId: string;
   readonly includeQuotes: boolean;
   readonly includeReplies: boolean;
+  readonly pollIntervalSec: number;
 }): Promise<XWatcherActionResult<{ watcherId: string }>> {
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
@@ -35,6 +36,7 @@ export async function createWatcher(args: {
     channelId: args.channelId,
     includeQuotes: args.includeQuotes,
     includeReplies: args.includeReplies,
+    pollIntervalSec: args.pollIntervalSec,
   });
   if (!parsed.success) {
     return err({ code: 'VALIDATION_ERROR', message: parsed.error.message });
@@ -49,6 +51,7 @@ export async function createWatcher(args: {
     // the schema marks them optional, which trips exactOptionalPropertyTypes).
     includeQuotes: args.includeQuotes,
     includeReplies: args.includeReplies,
+    pollIntervalSec: args.pollIntervalSec,
   });
   if (isErr(result)) return err(toActionError(result.error));
 
@@ -62,6 +65,7 @@ export async function updateWatcher(args: {
   readonly channelId: string;
   readonly includeQuotes: boolean;
   readonly includeReplies: boolean;
+  readonly pollIntervalSec: number;
 }): Promise<XWatcherActionResult<{ watcherId: string }>> {
   const auth = await authorizeGuild(args.guildId);
   if (isErr(auth)) return err(auth.error);
@@ -70,6 +74,7 @@ export async function updateWatcher(args: {
     channelId: args.channelId,
     includeQuotes: args.includeQuotes,
     includeReplies: args.includeReplies,
+    pollIntervalSec: args.pollIntervalSec,
   });
   if (isErr(result)) return err(toActionError(result.error));
 

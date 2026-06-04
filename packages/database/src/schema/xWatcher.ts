@@ -1,6 +1,14 @@
 import { createId } from '@paralleldrive/cuid2';
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 
 import { xWatcherEvent } from './xWatcherEvent.js';
 
@@ -68,6 +76,14 @@ export const xWatcher = pgTable(
     // channel. Operators opt in per watcher. Retweets have no toggle:
     // the spec excludes them unconditionally.
     includeReplies: boolean('includeReplies').notNull().default(false),
+    // How often (seconds) THIS watcher is polled — operator-set per watcher
+    // from the dashboard. Default 300 (5 min). The bot ticks on a fixed base
+    // cadence (X_WATCHER_POLL_INTERVAL_SEC, default 60s) and only polls a
+    // watcher once `lastCheckedAt + pollIntervalSec` has elapsed, so this is
+    // effectively floored by the base tick (can't poll faster than the base).
+    // Lets a busy account refresh every couple minutes while a quiet one
+    // checks every 30 — and tunes X API read cost per account.
+    pollIntervalSec: integer('pollIntervalSec').notNull().default(300),
     createdAt: timestamp('createdAt', { precision: 3, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { precision: 3, mode: 'date' })
       .notNull()
