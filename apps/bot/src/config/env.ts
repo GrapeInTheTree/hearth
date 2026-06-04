@@ -31,13 +31,19 @@ const EnvSchema = z.object({
   BOT_LOG_CHANNEL_ID: SnowflakeSchema.optional(),
 
   // X-watcher (X → Discord post mirror)
-  // Which feed backend supplies posts. 'none' = disabled (no API key / RSS
-  // feed configured yet) — the bot boots and simply mirrors nothing. The
-  // feature is built source-agnostic: when a backend is available, adding
-  // it is a new XFeedSource implementation + a branch in
-  // services/xFeedSourceFactory.ts + a value in this enum. Nothing else
-  // (poller, service, schema, dashboard) changes.
-  X_FEED_SOURCE: z.enum(['none']).default('none'),
+  // Which feed backend supplies posts:
+  //   'none' = disabled (default) — the bot boots and mirrors nothing.
+  //   'xapi' = official X API v2 (app-only Bearer). Requires
+  //            X_API_BEARER_TOKEN below.
+  // Source-agnostic by design: adding another backend (e.g. RSS) is a new
+  // XFeedSource impl + a branch in services/xFeedSourceFactory.ts + a value
+  // here. Nothing else (poller, service, schema, dashboard) changes.
+  X_FEED_SOURCE: z.enum(['none', 'xapi']).default('none'),
+  // App-only Bearer token for X_FEED_SOURCE=xapi (X Developer Portal →
+  // your App → Keys and tokens → Bearer Token). Optional unless xapi is
+  // selected; if xapi is set without it, the factory logs an error and
+  // falls back to disabled (the bot still boots). NEVER commit a real value.
+  X_API_BEARER_TOKEN: z.string().optional(),
   // The poller's BASE TICK (seconds) — how often the bot wakes to check
   // which watchers are due. Each watcher has its OWN cadence
   // (XWatcher.pollIntervalSec, set per-watcher from the dashboard, default
