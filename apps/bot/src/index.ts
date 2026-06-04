@@ -67,6 +67,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     client.logger.warn(`Received ${signal} — shutting down gracefully`);
     void (async () => {
       try {
+        diContainer.xWatcherPoller.stop();
         await client.destroy();
       } catch (err) {
         client.logger.error('Error while destroying Discord client', err);
@@ -101,6 +102,8 @@ try {
       verification: diContainer.services.verification,
       reactionRoles: diContainer.services.reactionRoles,
       rolePicker: diContainer.services.rolePicker,
+      xWatcher: diContainer.services.xWatcher,
+      xWatcherPoller: diContainer.xWatcherPoller,
       branding,
       isReady: () => client.isReady(),
     },

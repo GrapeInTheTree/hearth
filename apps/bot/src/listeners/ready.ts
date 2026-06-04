@@ -14,5 +14,8 @@ export class ReadyListener extends Listener<typeof Events.ClientReady> {
     this.container.logger.info(
       `🟢 ${branding.name} ready as ${tag} — connected to ${guilds} guild${guilds === 1 ? '' : 's'}`,
     );
+    // Start X-watcher polling now that the gateway is live (posting needs a
+    // ready client). No-op when no feed source is configured.
+    this.container.xWatcherPoller.start();
   }
 }
