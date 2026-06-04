@@ -32,6 +32,7 @@ export type {
   TicketsGateway,
   VerificationGateway,
   VerificationMessagePayload,
+  XWatcherGateway,
 } from './ports/discordGateway.js';
 
 export {

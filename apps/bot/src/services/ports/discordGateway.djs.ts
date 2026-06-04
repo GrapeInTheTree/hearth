@@ -414,6 +414,23 @@ export class DjsDiscordGateway implements DiscordGateway {
     });
   }
 
+  // ─── X-watcher (X → Discord post mirror) ──────────────────────────────
+
+  public async sendChannelMessage(
+    channelId: string,
+    content: string,
+  ): Promise<{ messageId: string }> {
+    return await this.wrap('sendChannelMessage', async () => {
+      const channel = await this.fetchTextChannel(channelId);
+      // Bare link only — Discord auto-unfurls the tweet card embed, which
+      // is exactly the spec ("post only the link"). allowedMentions parse:[]
+      // suppresses any accidental @-ping the post text might contain; it
+      // does NOT suppress link unfurling.
+      const message = await channel.send({ content, allowedMentions: { parse: [] } });
+      return { messageId: message.id };
+    });
+  }
+
   private async fetchGuildChannel(channelId: string): Promise<GuildChannel> {
     const channel = (await this.client.channels.fetch(channelId)) as GuildBasedChannel | null;
     if (channel === null || !('guild' in channel)) {

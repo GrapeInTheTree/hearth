@@ -245,6 +245,25 @@ export interface RolePickerGateway extends BaseGateway {
   deleteRolePickerMessage(channelId: string, messageId: string): Promise<void>;
 }
 
+// ─── XWatcherGateway ────────────────────────────────────────────────
+// The X (Twitter) → Discord post mirror. The poller observes new posts
+// on a watched account and mirrors each as a bare link. The ONLY Discord
+// op it needs is posting plain text to a channel — it touches no roles,
+// members, or components. Extends BaseGateway purely for convention
+// symmetry with the other domain sub-interfaces; the poller uses only
+// sendChannelMessage.
+
+export interface XWatcherGateway extends BaseGateway {
+  /** Post plain text content to a channel. Used by the X-watcher poller
+   *  to mirror a post as a bare link (Discord renders the tweet card
+   *  embed automatically — the spec wants link-only, no bot embed).
+   *  Returns the new message id so the audit ledger can deep-link to it.
+   *  Throws DiscordApiError on a missing/forbidden channel; the poller
+   *  records `send_failed` and advances its cursor so one bad post never
+   *  wedges the feed. */
+  sendChannelMessage(channelId: string, content: string): Promise<{ messageId: string }>;
+}
+
 // ─── DiscordGateway ─────────────────────────────────────────────────
 // Composite for the production djs implementation and for test fakes
 // that span multiple domains. Service-layer code prefers the narrower
@@ -253,4 +272,5 @@ export interface RolePickerGateway extends BaseGateway {
 export type DiscordGateway = TicketsGateway &
   VerificationGateway &
   ReactionRolesGateway &
-  RolePickerGateway;
+  RolePickerGateway &
+  XWatcherGateway;

@@ -264,6 +264,18 @@ export class FakeDiscordGateway implements DiscordGateway {
     return Promise.resolve();
   }
 
+  // ─── X-watcher (composite member; unused here, stubbed) ───────────
+
+  public async sendChannelMessage(
+    channelId: string,
+    content: string,
+  ): Promise<{ messageId: string }> {
+    this.record('sendChannelMessage', { channelId, content });
+    this.maybeThrow('sendChannelMessage');
+    const messageId = this.options.nextMessageId?.() ?? `msg-${String(++this.messageCounter)}`;
+    return Promise.resolve({ messageId });
+  }
+
   public callsOf(op: string): FakeGatewayCall[] {
     return this.calls.filter((c) => c.op === op);
   }
